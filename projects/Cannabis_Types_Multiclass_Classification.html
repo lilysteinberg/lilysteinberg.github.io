@@ -2207,14 +2207,14 @@ vertical-align: -.125em;
 </header>
 
 
-<p><strong>GitHub Repository</strong>: <a href="https://github.com/lilysteinberg/Projects" class="uri">https://github.com/lilysteinberg/Projects</a></p>
+<p><strong>GitHub Repository</strong>: <a href="https://github.com/lilysteinberg/lilysteinberg.github.io" class="uri">https://github.com/lilysteinberg/lilysteinberg.github.io</a></p>
 <section id="part-0-explaining-and-preparing-data" class="level1">
 <h1>Part 0: Explaining and Preparing Data</h1>
 <p>This project designs a model that predicts if a strain of cannabis is classified as indica, sativa, or hybrid, given the reported effects and flavors.</p>
 <p>The dataset consists of user reviews of different strains of cannabis. Users rated their experiences with the cannabis strain on a scale of 1 to 5. They also selected words from a long list to describe the Effects and the Flavor of the cannabis. The original dataset can be found here: <a href="https://www.kaggle.com/datasets/kingburrito666/cannabis-strains" class="uri">https://www.kaggle.com/datasets/kingburrito666/cannabis-strains</a>. Some data has already been cleaned, and the columns converted to dummy variables.</p>
 <hr>
 <p>This hidden code loads in the necessary packages.</p>
-<div id="2dee51e7" class="cell" data-execution_count="1">
+<div id="f0a0db87" class="cell" data-execution_count="1">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1"></a><span class="co"># packages</span></span>
@@ -2234,7 +2234,7 @@ vertical-align: -.125em;
 </details>
 </div>
 <p>This hidden code imports the data.</p>
-<div id="48dfce71" class="cell" data-execution_count="2">
+<div id="9fbb6117" class="cell" data-execution_count="2">
 <details class="code-fold">
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1"></a><span class="co"># data</span></span>
@@ -2244,7 +2244,7 @@ vertical-align: -.125em;
 </section>
 <section id="part-1-binary-classification-distinguishing-indica-and-sativa-strains" class="level1">
 <h1>Part 1: Binary Classification – Distinguishing Indica and Sativa Strains</h1>
-<div id="1bbcbca9" class="cell" data-execution_count="3">
+<div id="46840ce5" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1"></a><span class="co"># limit dataset to indica and sativa</span></span>
 <span id="cb3-2"><a href="#cb3-2"></a>weed_limited <span class="op">=</span> weed[(weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="st">&quot;indica&quot;</span>) <span class="op">|</span> (weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="st">&quot;sativa&quot;</span>)]</span>
 <span id="cb3-3"><a href="#cb3-3"></a></span>
@@ -2260,7 +2260,7 @@ vertical-align: -.125em;
 <p>I will be using F1 scores as the metric for model selection. It combines precision and recall, and like ROC AUC, it is less misleading than accuracy. Importantly, it worked better for the models built in Part 2, and since those will be compared against the models also built in Part 1, I will use it throughout.</p>
 <p><strong>1: LDA</strong></p>
 <p>Find and fit the best model</p>
-<div id="728cb0b7" class="cell" data-execution_count="4">
+<div id="df675bc0" class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1"></a><span class="co"># make pipeline</span></span>
 <span id="cb4-2"><a href="#cb4-2"></a>lda_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb4-3"><a href="#cb4-3"></a>  [(<span class="st">&quot;lda&quot;</span>, LinearDiscriminantAnalysis())]</span>
@@ -2270,7 +2270,7 @@ vertical-align: -.125em;
 <span id="cb4-7"><a href="#cb4-7"></a>lda_fitted <span class="op">=</span> lda_pipeline.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Cross-validated F1 score</p>
-<div id="097c43f0" class="cell" data-execution_count="5">
+<div id="f5e59e7d" class="cell" data-execution_count="5">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1"></a><span class="co"># create empty list of F1 score</span></span>
 <span id="cb5-2"><a href="#cb5-2"></a>f1_compare_p1 <span class="op">=</span> []</span>
 <span id="cb5-3"><a href="#cb5-3"></a></span>
@@ -2291,7 +2291,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="5b7ad2aa" class="cell" data-execution_count="6">
+<div id="2993336c" class="cell" data-execution_count="6">
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1"></a><span class="co"># get predictions</span></span>
 <span id="cb7-2"><a href="#cb7-2"></a>y_pred <span class="op">=</span> cross_val_predict(lda_pipeline, X, y, cv<span class="op">=</span><span class="dv">5</span>)</span>
 <span id="cb7-3"><a href="#cb7-3"></a></span>
@@ -2310,7 +2310,7 @@ vertical-align: -.125em;
 </div>
 <p><strong>2: QDA</strong></p>
 <p>Find and fit the best model (tune QDA’s reg_param hyperparameter because there is a warning about collinearity otherwise).</p>
-<div id="15c12110" class="cell" data-execution_count="7">
+<div id="3275d8dd" class="cell" data-execution_count="7">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1"></a><span class="co"># make pipeline for tuning</span></span>
 <span id="cb8-2"><a href="#cb8-2"></a>qda_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb8-3"><a href="#cb8-3"></a>  [(<span class="st">&quot;qda&quot;</span>, QuadraticDiscriminantAnalysis())]</span>
@@ -2354,10 +2354,10 @@ vertical-align: -.125em;
 <tbody>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">1</td>
-<td>0.044980</td>
-<td>0.006512</td>
-<td>0.009216</td>
-<td>0.001380</td>
+<td>0.056211</td>
+<td>0.007759</td>
+<td>0.009508</td>
+<td>0.002002</td>
 <td>0.1</td>
 <td>{&#39;qda__reg_param&#39;: 0.1}</td>
 <td>0.834484</td>
@@ -2371,10 +2371,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">2</td>
-<td>0.037468</td>
-<td>0.014653</td>
-<td>0.007335</td>
-<td>0.001161</td>
+<td>0.031012</td>
+<td>0.001993</td>
+<td>0.007545</td>
+<td>0.000878</td>
 <td>0.2</td>
 <td>{&#39;qda__reg_param&#39;: 0.2}</td>
 <td>0.838095</td>
@@ -2388,10 +2388,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">3</td>
-<td>0.029820</td>
-<td>0.029661</td>
-<td>0.008143</td>
-<td>0.002481</td>
+<td>0.021861</td>
+<td>0.008330</td>
+<td>0.009690</td>
+<td>0.002661</td>
 <td>0.3</td>
 <td>{&#39;qda__reg_param&#39;: 0.30000000000000004}</td>
 <td>0.839133</td>
@@ -2405,10 +2405,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4</td>
-<td>0.012697</td>
-<td>0.001615</td>
-<td>0.008144</td>
-<td>0.001104</td>
+<td>0.016492</td>
+<td>0.001330</td>
+<td>0.010917</td>
+<td>0.000656</td>
 <td>0.4</td>
 <td>{&#39;qda__reg_param&#39;: 0.4}</td>
 <td>0.836225</td>
@@ -2422,10 +2422,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5</td>
-<td>0.012064</td>
-<td>0.001451</td>
-<td>0.008079</td>
-<td>0.001026</td>
+<td>0.014772</td>
+<td>0.001913</td>
+<td>0.009505</td>
+<td>0.001058</td>
 <td>0.5</td>
 <td>{&#39;qda__reg_param&#39;: 0.5}</td>
 <td>0.802563</td>
@@ -2439,10 +2439,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">6</td>
-<td>0.014635</td>
-<td>0.004157</td>
-<td>0.008254</td>
-<td>0.000729</td>
+<td>0.016960</td>
+<td>0.006025</td>
+<td>0.009727</td>
+<td>0.001519</td>
 <td>0.6</td>
 <td>{&#39;qda__reg_param&#39;: 0.6000000000000001}</td>
 <td>0.806949</td>
@@ -2456,10 +2456,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">7</td>
-<td>0.013750</td>
-<td>0.000225</td>
-<td>0.010768</td>
-<td>0.003458</td>
+<td>0.013212</td>
+<td>0.001663</td>
+<td>0.008765</td>
+<td>0.001339</td>
 <td>0.7</td>
 <td>{&#39;qda__reg_param&#39;: 0.7000000000000001}</td>
 <td>0.801161</td>
@@ -2473,10 +2473,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">8</td>
-<td>0.014031</td>
-<td>0.003633</td>
-<td>0.007849</td>
-<td>0.001483</td>
+<td>0.012135</td>
+<td>0.001788</td>
+<td>0.007465</td>
+<td>0.000504</td>
 <td>0.8</td>
 <td>{&#39;qda__reg_param&#39;: 0.8}</td>
 <td>0.801161</td>
@@ -2490,10 +2490,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">9</td>
-<td>0.010565</td>
-<td>0.001094</td>
-<td>0.007031</td>
-<td>0.000807</td>
+<td>0.011123</td>
+<td>0.001733</td>
+<td>0.006489</td>
+<td>0.000416</td>
 <td>0.9</td>
 <td>{&#39;qda__reg_param&#39;: 0.9}</td>
 <td>0.798184</td>
@@ -2507,10 +2507,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">0</td>
-<td>0.042363</td>
-<td>0.006495</td>
-<td>0.009003</td>
-<td>0.001184</td>
+<td>0.058043</td>
+<td>0.010921</td>
+<td>0.012486</td>
+<td>0.006234</td>
 <td>0.0</td>
 <td>{&#39;qda__reg_param&#39;: 0.0}</td>
 <td>0.393782</td>
@@ -2528,7 +2528,7 @@ vertical-align: -.125em;
 </div>
 </div>
 </div>
-<div id="654f7cb7" class="cell" data-execution_count="8">
+<div id="e3b4a801" class="cell" data-execution_count="8">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1"></a><span class="co"># make optimal pipeline</span></span>
 <span id="cb9-2"><a href="#cb9-2"></a>qda_best_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb9-3"><a href="#cb9-3"></a>  [(<span class="st">&quot;qda&quot;</span>, QuadraticDiscriminantAnalysis(reg_param <span class="op">=</span> <span class="fl">0.2</span>))]</span>
@@ -2538,7 +2538,7 @@ vertical-align: -.125em;
 <span id="cb9-7"><a href="#cb9-7"></a>qda_best_pipeline_fitted <span class="op">=</span> qda_best_pipeline.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Cross-validated F1 score</p>
-<div id="316b553d" class="cell" data-execution_count="9">
+<div id="b89ef8bb" class="cell" data-execution_count="9">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1"></a><span class="co"># cross-validation to estimate f1</span></span>
 <span id="cb10-2"><a href="#cb10-2"></a>scores <span class="op">=</span> cross_val_score(qda_best_pipeline,</span>
 <span id="cb10-3"><a href="#cb10-3"></a>                         X<span class="op">=</span>X,</span>
@@ -2556,7 +2556,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="6985c32b" class="cell" data-execution_count="10">
+<div id="e8a406ec" class="cell" data-execution_count="10">
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1"></a><span class="co"># get predictions</span></span>
 <span id="cb12-2"><a href="#cb12-2"></a>y_pred <span class="op">=</span> cross_val_predict(qda_best_pipeline, X, y, cv<span class="op">=</span><span class="dv">5</span>)</span>
 <span id="cb12-3"><a href="#cb12-3"></a></span>
@@ -2575,7 +2575,7 @@ vertical-align: -.125em;
 </div>
 <p><strong>3: SVC</strong></p>
 <p>Find and fit the best model</p>
-<div id="72d43b8e" class="cell" data-execution_count="11">
+<div id="52ba92d2" class="cell" data-execution_count="11">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb13-2"><a href="#cb13-2"></a>svc_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb13-3"><a href="#cb13-3"></a>  [(<span class="st">&quot;svc&quot;</span>, SVC(kernel<span class="op">=</span><span class="st">&quot;linear&quot;</span>, probability<span class="op">=</span><span class="va">True</span>))]</span>
@@ -2594,7 +2594,7 @@ vertical-align: -.125em;
 <span id="cb13-16"><a href="#cb13-16"></a>svc_fitted <span class="op">=</span> svc_pipeline_best.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Cross-validated F1 score</p>
-<div id="f58eec9e" class="cell" data-execution_count="12">
+<div id="fe1c1b76" class="cell" data-execution_count="12">
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1"></a><span class="co"># cross-validation to estimate f1</span></span>
 <span id="cb14-2"><a href="#cb14-2"></a>scores <span class="op">=</span> cross_val_score(svc_pipeline_best,</span>
 <span id="cb14-3"><a href="#cb14-3"></a>                         X<span class="op">=</span>X,</span>
@@ -2612,7 +2612,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="89e1bf9e" class="cell" data-execution_count="13">
+<div id="970fc90b" class="cell" data-execution_count="13">
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1"></a><span class="co"># get predictions</span></span>
 <span id="cb16-2"><a href="#cb16-2"></a>y_pred <span class="op">=</span> cross_val_predict(svc_pipeline_best, X, y, cv<span class="op">=</span><span class="dv">5</span>)</span>
 <span id="cb16-3"><a href="#cb16-3"></a></span>
@@ -2631,7 +2631,7 @@ vertical-align: -.125em;
 </div>
 <p><strong>4: SVM</strong></p>
 <p>Find and fit the best model</p>
-<div id="04863791" class="cell" data-execution_count="14">
+<div id="040fa169" class="cell" data-execution_count="14">
 <div class="sourceCode cell-code" id="cb17"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb17-1"><a href="#cb17-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb17-2"><a href="#cb17-2"></a>svm_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb17-3"><a href="#cb17-3"></a>  [(<span class="st">&quot;svm&quot;</span>, SVC())]</span>
@@ -2654,7 +2654,7 @@ vertical-align: -.125em;
 <span id="cb17-20"><a href="#cb17-20"></a>svm_fitted <span class="op">=</span> svc_pipeline_best.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Cross-validated F1 score</p>
-<div id="af3789c3" class="cell" data-execution_count="15">
+<div id="46556fc4" class="cell" data-execution_count="15">
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1"></a><span class="co"># cross-validation to estimate f1</span></span>
 <span id="cb18-2"><a href="#cb18-2"></a>scores <span class="op">=</span> cross_val_score(svm_pipeline_best,</span>
 <span id="cb18-3"><a href="#cb18-3"></a>                         X<span class="op">=</span>X,</span>
@@ -2672,7 +2672,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="a9795d22" class="cell" data-execution_count="16">
+<div id="297f4dff" class="cell" data-execution_count="16">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1"></a><span class="co"># get predictions</span></span>
 <span id="cb20-2"><a href="#cb20-2"></a>y_pred <span class="op">=</span> cross_val_predict(svm_pipeline_best, X, y, cv<span class="op">=</span><span class="dv">5</span>)</span>
 <span id="cb20-3"><a href="#cb20-3"></a></span>
@@ -2690,7 +2690,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p><strong>Model Performance Comparison</strong></p>
-<div id="1125d5e2" class="cell" data-execution_count="17">
+<div id="3a600b6c" class="cell" data-execution_count="17">
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1"></a><span class="co"># create dataframe for comparing F1 scores</span></span>
 <span id="cb21-2"><a href="#cb21-2"></a>f1_compare_p1_df <span class="op">=</span> pd.DataFrame({</span>
 <span id="cb21-3"><a href="#cb21-3"></a>    <span class="st">&quot;model&quot;</span>: [<span class="st">&quot;LDA&quot;</span>, <span class="st">&quot;QDA&quot;</span>, <span class="st">&quot;SVC&quot;</span>, <span class="st">&quot;SVM&quot;</span>],</span>
@@ -2741,7 +2741,7 @@ vertical-align: -.125em;
 </section>
 <section id="part-2-natural-mulitclass-distinguishing-indica-sativa-and-hybrid-strains" class="level1">
 <h1>Part 2: Natural Mulitclass – Distinguishing Indica, Sativa, and Hybrid Strains</h1>
-<div id="cf6b6f05" class="cell" data-execution_count="18">
+<div id="f2103497" class="cell" data-execution_count="18">
 <div class="sourceCode cell-code" id="cb22"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb22-1"><a href="#cb22-1"></a><span class="co"># adjust data</span></span>
 <span id="cb22-2"><a href="#cb22-2"></a>weed <span class="op">=</span> weed.drop(columns <span class="op">=</span> [<span class="st">&quot;Strain&quot;</span>, <span class="st">&quot;Effects&quot;</span>, <span class="st">&quot;Flavor&quot;</span>])</span>
 <span id="cb22-3"><a href="#cb22-3"></a>weed <span class="op">=</span> weed <span class="op">*</span> <span class="dv">1</span></span>
@@ -2757,7 +2757,7 @@ vertical-align: -.125em;
 </div>
 <p><strong>Decision Tree</strong></p>
 <p>Find and fit the best model</p>
-<div id="0e408c9a" class="cell" data-execution_count="19">
+<div id="73c1da84" class="cell" data-execution_count="19">
 <div class="sourceCode cell-code" id="cb23"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1"></a><span class="co"># make pipeline for decision tree tuning</span></span>
 <span id="cb23-2"><a href="#cb23-2"></a>dt_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb23-3"><a href="#cb23-3"></a>    [</span>
@@ -2807,10 +2807,10 @@ vertical-align: -.125em;
 <tbody>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2</td>
-<td>0.010734</td>
-<td>0.001355</td>
-<td>0.009641</td>
-<td>0.001542</td>
+<td>0.004904</td>
+<td>0.000827</td>
+<td>0.003166</td>
+<td>0.000530</td>
 <td>0.0</td>
 <td>3</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.0, &#39;dt__max_depth&#39;: 3}</td>
@@ -2825,74 +2825,74 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4</td>
-<td>0.014012</td>
-<td>0.002935</td>
-<td>0.008527</td>
-<td>0.000572</td>
+<td>0.005643</td>
+<td>0.000409</td>
+<td>0.003216</td>
+<td>0.000713</td>
 <td>0.0</td>
 <td>5</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.0, &#39;dt__max_depth&#39;: 5}</td>
-<td>0.543815</td>
+<td>0.540504</td>
 <td>0.573848</td>
-<td>0.575146</td>
-<td>0.588967</td>
+<td>0.576717</td>
+<td>0.591542</td>
 <td>0.584771</td>
-<td>0.573309</td>
-<td>0.015812</td>
+<td>0.573476</td>
+<td>0.017617</td>
 <td>2</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5</td>
-<td>0.018664</td>
-<td>0.002444</td>
-<td>0.009768</td>
-<td>0.001585</td>
+<td>0.006205</td>
+<td>0.000337</td>
+<td>0.003145</td>
+<td>0.000554</td>
 <td>0.0</td>
 <td>6</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.0, &#39;dt__max_depth&#39;: 6}</td>
-<td>0.540746</td>
-<td>0.555523</td>
-<td>0.595634</td>
+<td>0.537508</td>
+<td>0.553717</td>
+<td>0.591960</td>
 <td>0.589596</td>
-<td>0.577739</td>
-<td>0.571847</td>
-<td>0.020733</td>
+<td>0.574836</td>
+<td>0.569523</td>
+<td>0.021021</td>
 <td>3</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">3</td>
-<td>0.012953</td>
-<td>0.001936</td>
-<td>0.009599</td>
-<td>0.001621</td>
+<td>0.004636</td>
+<td>0.000096</td>
+<td>0.002800</td>
+<td>0.000167</td>
 <td>0.0</td>
 <td>4</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.0, &#39;dt__max_depth&#39;: 4}</td>
 <td>0.511396</td>
 <td>0.569268</td>
 <td>0.576891</td>
-<td>0.599526</td>
+<td>0.596957</td>
 <td>0.545446</td>
-<td>0.560506</td>
-<td>0.030021</td>
+<td>0.559992</td>
+<td>0.029364</td>
 <td>4</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">7</td>
-<td>0.017648</td>
-<td>0.000921</td>
-<td>0.008728</td>
-<td>0.000368</td>
+<td data-quarto-table-cell-role="th">8</td>
+<td>0.009467</td>
+<td>0.001792</td>
+<td>0.003906</td>
+<td>0.001070</td>
 <td>0.0</td>
-<td>8</td>
-<td>{&#39;dt__ccp_alpha&#39;: 0.0, &#39;dt__max_depth&#39;: 8}</td>
-<td>0.530399</td>
-<td>0.558864</td>
-<td>0.563807</td>
-<td>0.576856</td>
-<td>0.566175</td>
-<td>0.559220</td>
-<td>0.015564</td>
+<td>9</td>
+<td>{&#39;dt__ccp_alpha&#39;: 0.0, &#39;dt__max_depth&#39;: 9}</td>
+<td>0.527273</td>
+<td>0.571101</td>
+<td>0.566729</td>
+<td>0.564344</td>
+<td>0.557097</td>
+<td>0.557309</td>
+<td>0.015689</td>
 <td>5</td>
 </tr>
 <tr class="even">
@@ -2915,10 +2915,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">85</td>
-<td>0.013636</td>
-<td>0.001433</td>
-<td>0.008472</td>
-<td>0.000579</td>
+<td>0.006837</td>
+<td>0.000830</td>
+<td>0.003924</td>
+<td>0.000933</td>
 <td>0.9</td>
 <td>5</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.9, &#39;dt__max_depth&#39;: 5}</td>
@@ -2933,10 +2933,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">86</td>
-<td>0.017606</td>
-<td>0.001291</td>
-<td>0.011967</td>
-<td>0.002895</td>
+<td>0.006874</td>
+<td>0.000691</td>
+<td>0.003708</td>
+<td>0.000670</td>
 <td>0.9</td>
 <td>6</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.9, &#39;dt__max_depth&#39;: 6}</td>
@@ -2951,10 +2951,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">87</td>
-<td>0.017258</td>
-<td>0.000661</td>
-<td>0.009279</td>
-<td>0.000830</td>
+<td>0.008050</td>
+<td>0.001159</td>
+<td>0.003453</td>
+<td>0.000163</td>
 <td>0.9</td>
 <td>7</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.9, &#39;dt__max_depth&#39;: 7}</td>
@@ -2969,10 +2969,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">88</td>
-<td>0.019144</td>
-<td>0.001151</td>
-<td>0.008723</td>
-<td>0.000629</td>
+<td>0.008800</td>
+<td>0.001289</td>
+<td>0.003646</td>
+<td>0.000914</td>
 <td>0.9</td>
 <td>8</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.9, &#39;dt__max_depth&#39;: 8}</td>
@@ -2987,10 +2987,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">89</td>
-<td>0.021878</td>
-<td>0.001430</td>
-<td>0.009042</td>
-<td>0.000940</td>
+<td>0.008170</td>
+<td>0.000314</td>
+<td>0.003059</td>
+<td>0.000293</td>
 <td>0.9</td>
 <td>9</td>
 <td>{&#39;dt__ccp_alpha&#39;: 0.9, &#39;dt__max_depth&#39;: 9}</td>
@@ -3010,7 +3010,7 @@ vertical-align: -.125em;
 </div>
 </div>
 </div>
-<div id="d9d5f232" class="cell" data-execution_count="20">
+<div id="b8485716" class="cell" data-execution_count="20">
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1"></a>dt_best_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb24-2"><a href="#cb24-2"></a>    [</span>
 <span id="cb24-3"><a href="#cb24-3"></a>     (<span class="st">&quot;dt&quot;</span>, DecisionTreeClassifier(ccp_alpha<span class="op">=</span><span class="fl">0.0</span>, max_depth<span class="op">=</span><span class="dv">3</span>))</span>
@@ -3021,7 +3021,7 @@ vertical-align: -.125em;
 <span id="cb24-8"><a href="#cb24-8"></a>dt_best_pipeline_fitted <span class="op">=</span> dt_best_pipeline.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Plot</p>
-<div id="153c6ef1" class="cell" data-execution_count="21">
+<div id="b73072fd" class="cell" data-execution_count="21">
 <div class="sourceCode cell-code" id="cb25"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1"></a><span class="co"># get list of feature names</span></span>
 <span id="cb25-2"><a href="#cb25-2"></a>feature_names <span class="op">=</span> weed.columns</span>
 <span id="cb25-3"><a href="#cb25-3"></a></span>
@@ -3057,7 +3057,7 @@ vertical-align: -.125em;
 <p>Interpretation:</p>
 <p>The decision tree shows a depth of 4 nodes. The root asks whether the strain is considered “focused” or not. If true, then is the strain “creative”, “pungent”, or “euphoric”. Depending on the answers, the strain will be categorized as hybrid or sativa. If the strain was not “focused”, then it will be checked if it is “sweet”, “happy”, or “sage”. Depending on the answers, the strain will be categorized as indica or hybrid.</p>
 <p>Cross-validated F1 Score</p>
-<div id="6d3732d0" class="cell" data-execution_count="22">
+<div id="73903ba4" class="cell" data-execution_count="22">
 <div class="sourceCode cell-code" id="cb27"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1"></a><span class="co"># create empty list of f1_macro scores</span></span>
 <span id="cb27-2"><a href="#cb27-2"></a>f1_compare <span class="op">=</span> []</span>
 <span id="cb27-3"><a href="#cb27-3"></a></span>
@@ -3078,7 +3078,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="9078c7e2" class="cell" data-execution_count="23">
+<div id="a7b301d0" class="cell" data-execution_count="23">
 <div class="sourceCode cell-code" id="cb29"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1"></a><span class="co"># get predictions</span></span>
 <span id="cb29-2"><a href="#cb29-2"></a>y_pred <span class="op">=</span> cross_val_predict(dt_best_pipeline, X, y, cv<span class="op">=</span><span class="dv">5</span>)</span>
 <span id="cb29-3"><a href="#cb29-3"></a></span>
@@ -3097,7 +3097,7 @@ vertical-align: -.125em;
 </div>
 <p><strong>LDA</strong></p>
 <p>Find and fit the best model</p>
-<div id="e28304f2" class="cell" data-execution_count="24">
+<div id="400fe41e" class="cell" data-execution_count="24">
 <div class="sourceCode cell-code" id="cb30"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1"></a><span class="co"># make pipeline for LDA multiclass</span></span>
 <span id="cb30-2"><a href="#cb30-2"></a>ldam_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb30-3"><a href="#cb30-3"></a>  [</span>
@@ -3108,7 +3108,7 @@ vertical-align: -.125em;
 <span id="cb30-8"><a href="#cb30-8"></a>ldam_fitted <span class="op">=</span> ldam_pipeline.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Cross-validated F1 Score</p>
-<div id="889f8cd6" class="cell" data-execution_count="25">
+<div id="54d7fd40" class="cell" data-execution_count="25">
 <div class="sourceCode cell-code" id="cb31"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1"></a><span class="co"># cross-validation to estimate f1_macro</span></span>
 <span id="cb31-2"><a href="#cb31-2"></a>scores <span class="op">=</span> cross_val_score(ldam_pipeline,</span>
 <span id="cb31-3"><a href="#cb31-3"></a>                         X<span class="op">=</span>X,</span>
@@ -3126,7 +3126,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="650b474a" class="cell" data-execution_count="26">
+<div id="02b5b093" class="cell" data-execution_count="26">
 <div class="sourceCode cell-code" id="cb33"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb33-1"><a href="#cb33-1"></a><span class="co"># get predictions</span></span>
 <span id="cb33-2"><a href="#cb33-2"></a>y_pred <span class="op">=</span> cross_val_predict(ldam_pipeline, X, y, cv<span class="op">=</span><span class="dv">5</span>)</span>
 <span id="cb33-3"><a href="#cb33-3"></a></span>
@@ -3145,7 +3145,7 @@ vertical-align: -.125em;
 </div>
 <p><strong>QDA</strong></p>
 <p>Find and fit the best model</p>
-<div id="b3c7d102" class="cell" data-execution_count="27">
+<div id="3c2cde2f" class="cell" data-execution_count="27">
 <div class="sourceCode cell-code" id="cb34"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb34-1"><a href="#cb34-1"></a><span class="co"># make pipeline for tuning</span></span>
 <span id="cb34-2"><a href="#cb34-2"></a>qdam_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb34-3"><a href="#cb34-3"></a>  [(<span class="st">&quot;qda&quot;</span>, QuadraticDiscriminantAnalysis())]</span>
@@ -3189,10 +3189,10 @@ vertical-align: -.125em;
 <tbody>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">1</td>
-<td>0.136001</td>
-<td>0.012230</td>
-<td>0.059536</td>
-<td>0.005434</td>
+<td>0.039262</td>
+<td>0.004628</td>
+<td>0.012764</td>
+<td>0.002545</td>
 <td>0.1</td>
 <td>{&#39;qda__reg_param&#39;: 0.1}</td>
 <td>0.539351</td>
@@ -3206,10 +3206,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">2</td>
-<td>0.132084</td>
-<td>0.008666</td>
-<td>0.066273</td>
-<td>0.008701</td>
+<td>0.041212</td>
+<td>0.006406</td>
+<td>0.012343</td>
+<td>0.002108</td>
 <td>0.2</td>
 <td>{&#39;qda__reg_param&#39;: 0.2}</td>
 <td>0.507663</td>
@@ -3223,10 +3223,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">3</td>
-<td>0.114192</td>
-<td>0.017590</td>
-<td>0.062256</td>
-<td>0.016727</td>
+<td>0.017970</td>
+<td>0.005634</td>
+<td>0.006906</td>
+<td>0.001187</td>
 <td>0.3</td>
 <td>{&#39;qda__reg_param&#39;: 0.30000000000000004}</td>
 <td>0.480798</td>
@@ -3240,10 +3240,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4</td>
-<td>0.142789</td>
-<td>0.013787</td>
-<td>0.057926</td>
-<td>0.004041</td>
+<td>0.017414</td>
+<td>0.001398</td>
+<td>0.009009</td>
+<td>0.001741</td>
 <td>0.4</td>
 <td>{&#39;qda__reg_param&#39;: 0.4}</td>
 <td>0.473140</td>
@@ -3257,10 +3257,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5</td>
-<td>0.137518</td>
-<td>0.014388</td>
-<td>0.054935</td>
-<td>0.005281</td>
+<td>0.017855</td>
+<td>0.001330</td>
+<td>0.007236</td>
+<td>0.000481</td>
 <td>0.5</td>
 <td>{&#39;qda__reg_param&#39;: 0.5}</td>
 <td>0.438767</td>
@@ -3274,10 +3274,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">6</td>
-<td>0.132734</td>
-<td>0.014751</td>
-<td>0.061832</td>
-<td>0.014528</td>
+<td>0.018244</td>
+<td>0.001607</td>
+<td>0.007448</td>
+<td>0.000486</td>
 <td>0.6</td>
 <td>{&#39;qda__reg_param&#39;: 0.6000000000000001}</td>
 <td>0.425258</td>
@@ -3291,10 +3291,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">7</td>
-<td>0.145178</td>
-<td>0.013285</td>
-<td>0.057019</td>
-<td>0.006170</td>
+<td>0.018243</td>
+<td>0.001949</td>
+<td>0.008213</td>
+<td>0.001243</td>
 <td>0.7</td>
 <td>{&#39;qda__reg_param&#39;: 0.7000000000000001}</td>
 <td>0.408533</td>
@@ -3308,10 +3308,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">8</td>
-<td>0.132048</td>
-<td>0.005895</td>
-<td>0.050033</td>
-<td>0.010668</td>
+<td>0.017738</td>
+<td>0.001737</td>
+<td>0.006347</td>
+<td>0.000969</td>
 <td>0.8</td>
 <td>{&#39;qda__reg_param&#39;: 0.8}</td>
 <td>0.393253</td>
@@ -3325,10 +3325,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">9</td>
-<td>0.121228</td>
-<td>0.014649</td>
-<td>0.025164</td>
-<td>0.010363</td>
+<td>0.015864</td>
+<td>0.001272</td>
+<td>0.005001</td>
+<td>0.001193</td>
 <td>0.9</td>
 <td>{&#39;qda__reg_param&#39;: 0.9}</td>
 <td>0.391879</td>
@@ -3342,10 +3342,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">0</td>
-<td>0.176001</td>
-<td>0.015547</td>
-<td>0.053509</td>
-<td>0.006398</td>
+<td>0.040135</td>
+<td>0.008519</td>
+<td>0.011134</td>
+<td>0.002075</td>
 <td>0.0</td>
 <td>{&#39;qda__reg_param&#39;: 0.0}</td>
 <td>0.167709</td>
@@ -3363,7 +3363,7 @@ vertical-align: -.125em;
 </div>
 </div>
 </div>
-<div id="4900c269" class="cell" data-execution_count="28">
+<div id="538db0e4" class="cell" data-execution_count="28">
 <div class="sourceCode cell-code" id="cb35"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb35-1"><a href="#cb35-1"></a><span class="co"># make optimal pipeline</span></span>
 <span id="cb35-2"><a href="#cb35-2"></a>qdam_best_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb35-3"><a href="#cb35-3"></a>  [(<span class="st">&quot;qda&quot;</span>, QuadraticDiscriminantAnalysis(reg_param <span class="op">=</span> <span class="fl">0.1</span>))]</span>
@@ -3373,7 +3373,7 @@ vertical-align: -.125em;
 <span id="cb35-7"><a href="#cb35-7"></a>qdam_best_pipeline_fitted <span class="op">=</span> qdam_best_pipeline.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Cross-validated F1 Score</p>
-<div id="b8ed50d8" class="cell" data-execution_count="29">
+<div id="5172daba" class="cell" data-execution_count="29">
 <div class="sourceCode cell-code" id="cb36"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb36-1"><a href="#cb36-1"></a><span class="co"># cross-validation to estimate f1_macro</span></span>
 <span id="cb36-2"><a href="#cb36-2"></a>scores <span class="op">=</span> cross_val_score(qdam_best_pipeline,</span>
 <span id="cb36-3"><a href="#cb36-3"></a>                         X<span class="op">=</span>X,</span>
@@ -3391,7 +3391,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="0907ae91" class="cell" data-execution_count="30">
+<div id="5a39533f" class="cell" data-execution_count="30">
 <div class="sourceCode cell-code" id="cb38"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb38-1"><a href="#cb38-1"></a><span class="co"># get predictions</span></span>
 <span id="cb38-2"><a href="#cb38-2"></a>y_pred <span class="op">=</span> cross_val_predict(qdam_best_pipeline, X, y, cv<span class="op">=</span><span class="dv">5</span>)</span>
 <span id="cb38-3"><a href="#cb38-3"></a></span>
@@ -3410,7 +3410,7 @@ vertical-align: -.125em;
 </div>
 <p><strong>KNN</strong></p>
 <p>Find and fit the best model</p>
-<div id="84521e70" class="cell" data-execution_count="31">
+<div id="1e72f648" class="cell" data-execution_count="31">
 <div class="sourceCode cell-code" id="cb39"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb39-1"><a href="#cb39-1"></a><span class="co"># make pipeline for knn tuning</span></span>
 <span id="cb39-2"><a href="#cb39-2"></a>knn_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb39-3"><a href="#cb39-3"></a>    [</span>
@@ -3456,10 +3456,10 @@ vertical-align: -.125em;
 <tbody>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">5</td>
-<td>0.033487</td>
-<td>0.007561</td>
-<td>0.395028</td>
-<td>0.013430</td>
+<td>0.006130</td>
+<td>0.001013</td>
+<td>0.066328</td>
+<td>0.014843</td>
 <td>6</td>
 <td>{&#39;knn__n_neighbors&#39;: 6}</td>
 <td>0.540114</td>
@@ -3473,10 +3473,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">9</td>
-<td>0.038062</td>
-<td>0.011609</td>
-<td>0.243278</td>
-<td>0.044467</td>
+<td>0.006302</td>
+<td>0.001276</td>
+<td>0.035412</td>
+<td>0.002527</td>
 <td>10</td>
 <td>{&#39;knn__n_neighbors&#39;: 10}</td>
 <td>0.490208</td>
@@ -3490,10 +3490,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">7</td>
-<td>0.043379</td>
-<td>0.002994</td>
-<td>0.402062</td>
-<td>0.022316</td>
+<td>0.005834</td>
+<td>0.000538</td>
+<td>0.046515</td>
+<td>0.012561</td>
 <td>8</td>
 <td>{&#39;knn__n_neighbors&#39;: 8}</td>
 <td>0.513743</td>
@@ -3507,10 +3507,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">3</td>
-<td>0.017328</td>
-<td>0.002918</td>
-<td>0.522295</td>
-<td>0.750614</td>
+<td>0.007530</td>
+<td>0.004625</td>
+<td>0.082605</td>
+<td>0.096100</td>
 <td>4</td>
 <td>{&#39;knn__n_neighbors&#39;: 4}</td>
 <td>0.519411</td>
@@ -3524,10 +3524,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">6</td>
-<td>0.043627</td>
-<td>0.001383</td>
-<td>0.396772</td>
-<td>0.011507</td>
+<td>0.005616</td>
+<td>0.001080</td>
+<td>0.038484</td>
+<td>0.003656</td>
 <td>7</td>
 <td>{&#39;knn__n_neighbors&#39;: 7}</td>
 <td>0.504457</td>
@@ -3541,10 +3541,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">4</td>
-<td>0.021108</td>
-<td>0.005177</td>
-<td>0.244710</td>
-<td>0.065846</td>
+<td>0.004918</td>
+<td>0.000740</td>
+<td>0.044494</td>
+<td>0.012228</td>
 <td>5</td>
 <td>{&#39;knn__n_neighbors&#39;: 5}</td>
 <td>0.521897</td>
@@ -3558,10 +3558,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">8</td>
-<td>0.043887</td>
-<td>0.007102</td>
-<td>0.361713</td>
-<td>0.027242</td>
+<td>0.007360</td>
+<td>0.003577</td>
+<td>0.041572</td>
+<td>0.003376</td>
 <td>9</td>
 <td>{&#39;knn__n_neighbors&#39;: 9}</td>
 <td>0.505501</td>
@@ -3575,10 +3575,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">2</td>
-<td>0.023153</td>
-<td>0.004884</td>
-<td>2.112999</td>
-<td>0.225224</td>
+<td>0.015433</td>
+<td>0.004159</td>
+<td>0.311133</td>
+<td>0.052265</td>
 <td>3</td>
 <td>{&#39;knn__n_neighbors&#39;: 3}</td>
 <td>0.465673</td>
@@ -3592,10 +3592,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">1</td>
-<td>0.019284</td>
-<td>0.001298</td>
-<td>2.064709</td>
-<td>0.111528</td>
+<td>0.012783</td>
+<td>0.001497</td>
+<td>0.304427</td>
+<td>0.044701</td>
 <td>2</td>
 <td>{&#39;knn__n_neighbors&#39;: 2}</td>
 <td>0.467113</td>
@@ -3609,10 +3609,10 @@ vertical-align: -.125em;
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">0</td>
-<td>0.021344</td>
-<td>0.002517</td>
-<td>1.772063</td>
-<td>0.346053</td>
+<td>0.013136</td>
+<td>0.001392</td>
+<td>0.286072</td>
+<td>0.062765</td>
 <td>1</td>
 <td>{&#39;knn__n_neighbors&#39;: 1}</td>
 <td>0.461405</td>
@@ -3630,7 +3630,7 @@ vertical-align: -.125em;
 </div>
 </div>
 </div>
-<div id="b57216da" class="cell" data-execution_count="32">
+<div id="f2b48c7b" class="cell" data-execution_count="32">
 <div class="sourceCode cell-code" id="cb40"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb40-1"><a href="#cb40-1"></a><span class="co"># make pipeline for neighbors = 10</span></span>
 <span id="cb40-2"><a href="#cb40-2"></a>knn_best_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb40-3"><a href="#cb40-3"></a>    [</span>
@@ -3642,7 +3642,7 @@ vertical-align: -.125em;
 <span id="cb40-9"><a href="#cb40-9"></a>knn_best_pipeline_fitted <span class="op">=</span> knn_best_pipeline.fit(X, y)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Cross-validated F1 Score</p>
-<div id="c2a98597" class="cell" data-execution_count="33">
+<div id="aeadbd9c" class="cell" data-execution_count="33">
 <div class="sourceCode cell-code" id="cb41"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb41-1"><a href="#cb41-1"></a><span class="co"># cross-validation to estimate f1_macro</span></span>
 <span id="cb41-2"><a href="#cb41-2"></a>scores <span class="op">=</span> cross_val_score(knn_best_pipeline,</span>
 <span id="cb41-3"><a href="#cb41-3"></a>                         X<span class="op">=</span>X,</span>
@@ -3661,7 +3661,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Confusion Matrix</p>
-<div id="e32982ed" class="cell" data-execution_count="34">
+<div id="c31da537" class="cell" data-execution_count="34">
 <div class="sourceCode cell-code" id="cb43"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb43-1"><a href="#cb43-1"></a><span class="co"># get predictions</span></span>
 <span id="cb43-2"><a href="#cb43-2"></a>y_pred <span class="op">=</span> cross_val_predict(knn_best_pipeline, X, y, cv<span class="op">=</span><span class="dv">5</span>, n_jobs<span class="op">=-</span><span class="dv">1</span>)</span>
 <span id="cb43-3"><a href="#cb43-3"></a></span>
@@ -3679,7 +3679,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p><strong>Model Performance Comparison</strong></p>
-<div id="7a7ce462" class="cell" data-execution_count="35">
+<div id="8598f233" class="cell" data-execution_count="35">
 <div class="sourceCode cell-code" id="cb44"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb44-1"><a href="#cb44-1"></a><span class="co"># create dataframe for comparing F1 macro values</span></span>
 <span id="cb44-2"><a href="#cb44-2"></a>f1_compare_df <span class="op">=</span> pd.DataFrame({</span>
 <span id="cb44-3"><a href="#cb44-3"></a>    <span class="st">&quot;model&quot;</span>: [<span class="st">&quot;Decision Tree&quot;</span>, <span class="st">&quot;LDA&quot;</span>, <span class="st">&quot;QDA&quot;</span>, <span class="st">&quot;KNN&quot;</span>],</span>
@@ -3734,12 +3734,12 @@ vertical-align: -.125em;
 <h1>Part 3: Multiclass from Binary – Distinguishing Indica, Sativa, and Hybrid Strains</h1>
 <p><strong>Build One vs Rest (OvR) for Logistic and SVC Models</strong></p>
 <p>Fit a logistic regression for when “Type” = “indica” is 1, and is 0 for all others.</p>
-<div id="34ed265e" class="cell" data-execution_count="36">
+<div id="574f1013" class="cell" data-execution_count="36">
 <div class="sourceCode cell-code" id="cb45"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb45-1"><a href="#cb45-1"></a><span class="co"># adjust data</span></span>
 <span id="cb45-2"><a href="#cb45-2"></a>weed[<span class="st">&quot;type_is_indica&quot;</span>] <span class="op">=</span> (weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">1</span>) <span class="op">*</span> <span class="dv">1</span></span>
 <span id="cb45-3"><a href="#cb45-3"></a>y <span class="op">=</span> weed[<span class="st">&quot;type_is_indica&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="fe4fc401" class="cell" data-execution_count="37">
+<div id="3934b5bc" class="cell" data-execution_count="37">
 <div class="sourceCode cell-code" id="cb46"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb46-1"><a href="#cb46-1"></a><span class="co"># make pipeline for logistic tuning</span></span>
 <span id="cb46-2"><a href="#cb46-2"></a>logistic_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb46-3"><a href="#cb46-3"></a>  [</span>
@@ -3790,12 +3790,12 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit a logistic regression for when “Type” = “sativa” is 1, and is 0 for all others.</p>
-<div id="aa3598d5" class="cell" data-execution_count="38">
+<div id="659375a7" class="cell" data-execution_count="38">
 <div class="sourceCode cell-code" id="cb48"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb48-1"><a href="#cb48-1"></a><span class="co"># adjust data</span></span>
 <span id="cb48-2"><a href="#cb48-2"></a>weed[<span class="st">&quot;type_is_sativa&quot;</span>] <span class="op">=</span> (weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">2</span>) <span class="op">*</span> <span class="dv">1</span></span>
 <span id="cb48-3"><a href="#cb48-3"></a>y <span class="op">=</span> weed[<span class="st">&quot;type_is_sativa&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="55ef5f54" class="cell" data-execution_count="39">
+<div id="628d9a85" class="cell" data-execution_count="39">
 <div class="sourceCode cell-code" id="cb49"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb49-1"><a href="#cb49-1"></a><span class="co"># make pipeline for logistic tuning</span></span>
 <span id="cb49-2"><a href="#cb49-2"></a>logistic_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb49-3"><a href="#cb49-3"></a>  [</span>
@@ -3841,12 +3841,12 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit a logistic regression for when “Type” = “hybrid” is 1, and is 0 for all others.</p>
-<div id="4a92089d" class="cell" data-execution_count="40">
+<div id="a5f3a8f3" class="cell" data-execution_count="40">
 <div class="sourceCode cell-code" id="cb51"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb51-1"><a href="#cb51-1"></a><span class="co"># adjust data</span></span>
 <span id="cb51-2"><a href="#cb51-2"></a>weed[<span class="st">&quot;type_is_hybrid&quot;</span>] <span class="op">=</span> (weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">3</span>) <span class="op">*</span> <span class="dv">1</span></span>
 <span id="cb51-3"><a href="#cb51-3"></a>y <span class="op">=</span> weed[<span class="st">&quot;type_is_hybrid&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="2083ecd8" class="cell" data-execution_count="41">
+<div id="8ee08405" class="cell" data-execution_count="41">
 <div class="sourceCode cell-code" id="cb52"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb52-1"><a href="#cb52-1"></a><span class="co"># make pipeline for logistic tuning</span></span>
 <span id="cb52-2"><a href="#cb52-2"></a>logistic_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb52-3"><a href="#cb52-3"></a>  [</span>
@@ -3893,11 +3893,11 @@ vertical-align: -.125em;
 </div>
 <p>Repeat the OvR approach using SVC instead of logistic regression.</p>
 <p>Fit SVC for when “Type” = “indica” is 1, and is 0 for all others.</p>
-<div id="e2a97f53" class="cell" data-execution_count="42">
+<div id="51d31984" class="cell" data-execution_count="42">
 <div class="sourceCode cell-code" id="cb54"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb54-1"><a href="#cb54-1"></a><span class="co"># set y</span></span>
 <span id="cb54-2"><a href="#cb54-2"></a>y <span class="op">=</span> weed[<span class="st">&quot;type_is_indica&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="5c74438d" class="cell" data-execution_count="43">
+<div id="667084a4" class="cell" data-execution_count="43">
 <div class="sourceCode cell-code" id="cb55"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb55-1"><a href="#cb55-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb55-2"><a href="#cb55-2"></a>svc_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb55-3"><a href="#cb55-3"></a>  [(<span class="st">&quot;svc&quot;</span>, SVC(kernel<span class="op">=</span><span class="st">&quot;linear&quot;</span>, probability<span class="op">=</span><span class="va">True</span>))]</span>
@@ -3925,11 +3925,11 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit SVC for when “Type” = “sativa” is 1, and is 0 for all others.</p>
-<div id="f9edc23f" class="cell" data-execution_count="44">
+<div id="0cd430bf" class="cell" data-execution_count="44">
 <div class="sourceCode cell-code" id="cb57"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb57-1"><a href="#cb57-1"></a><span class="co"># set y</span></span>
 <span id="cb57-2"><a href="#cb57-2"></a>y <span class="op">=</span> weed[<span class="st">&quot;type_is_sativa&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="893b89fe" class="cell" data-execution_count="45">
+<div id="64300f00" class="cell" data-execution_count="45">
 <div class="sourceCode cell-code" id="cb58"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb58-1"><a href="#cb58-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb58-2"><a href="#cb58-2"></a>svc_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb58-3"><a href="#cb58-3"></a>  [(<span class="st">&quot;svc&quot;</span>, SVC(kernel<span class="op">=</span><span class="st">&quot;linear&quot;</span>, probability<span class="op">=</span><span class="va">True</span>))]</span>
@@ -3957,11 +3957,11 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit SVC for when “Type” = “hybrid” is 1, and is 0 for all others.</p>
-<div id="8af5fcb9" class="cell" data-execution_count="46">
+<div id="1f1ff9de" class="cell" data-execution_count="46">
 <div class="sourceCode cell-code" id="cb60"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb60-1"><a href="#cb60-1"></a><span class="co"># set y</span></span>
 <span id="cb60-2"><a href="#cb60-2"></a>y <span class="op">=</span> weed[<span class="st">&quot;type_is_hybrid&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="b664e4f0" class="cell" data-execution_count="47">
+<div id="552455fb" class="cell" data-execution_count="47">
 <div class="sourceCode cell-code" id="cb61"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb61-1"><a href="#cb61-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb61-2"><a href="#cb61-2"></a>svc_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb61-3"><a href="#cb61-3"></a>  [(<span class="st">&quot;svc&quot;</span>, SVC(kernel<span class="op">=</span><span class="st">&quot;linear&quot;</span>, probability<span class="op">=</span><span class="va">False</span>))]</span>
@@ -3992,7 +3992,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p><strong>Compare OvR for Logistic and SVC Models</strong></p>
-<div id="2d390d37" class="cell" data-execution_count="48">
+<div id="1558169c" class="cell" data-execution_count="48">
 <div class="sourceCode cell-code" id="cb63"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb63-1"><a href="#cb63-1"></a><span class="co"># create dataframe for comparing F1 scores</span></span>
 <span id="cb63-2"><a href="#cb63-2"></a>f1_compare_OvR_df <span class="op">=</span> pd.DataFrame({</span>
 <span id="cb63-3"><a href="#cb63-3"></a>    <span class="st">&quot;model and target class&quot;</span>: [<span class="st">&quot;Logistic_indica&quot;</span>, <span class="st">&quot;Logistic_sativa&quot;</span>, <span class="st">&quot;Logistic_hybrid&quot;</span>, <span class="st">&quot;SVC_indica&quot;</span>, <span class="st">&quot;SVC_sativa&quot;</span>, <span class="st">&quot;SVC_hybrid&quot;</span>],</span>
@@ -4053,7 +4053,7 @@ vertical-align: -.125em;
 <p>It makes intuitive sense that using sativa or indica as the target class would perform the best, since hybrid probably shares some qualities with both and therefore could be harder to distinguish. I found it surprising that the SVC model for the sativa class performed so badly, but there’s no way to see if SVC or logistic modeling will be better without trying them both.</p>
 <p><strong>Build One vs One (OvO) for Logistic and SVC Models</strong></p>
 <p>Fit logistic regression for when “Type” = “indica” is 1 and “Type” = “sativa” is 0.</p>
-<div id="750a583f" class="cell" data-execution_count="49">
+<div id="bfad5a9c" class="cell" data-execution_count="49">
 <div class="sourceCode cell-code" id="cb64"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb64-1"><a href="#cb64-1"></a><span class="co"># adjust data</span></span>
 <span id="cb64-2"><a href="#cb64-2"></a>weed_12 <span class="op">=</span> weed[(weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">1</span>) <span class="op">|</span> (weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">2</span>)]</span>
 <span id="cb64-3"><a href="#cb64-3"></a>weed_12 <span class="op">=</span> weed_12.drop(columns <span class="op">=</span> [<span class="st">&quot;type_is_indica&quot;</span>, <span class="st">&quot;type_is_sativa&quot;</span>, <span class="st">&quot;type_is_hybrid&quot;</span>])</span>
@@ -4065,7 +4065,7 @@ vertical-align: -.125em;
 <span id="cb64-9"><a href="#cb64-9"></a>X <span class="op">=</span> weed_12.drop(columns <span class="op">=</span> [<span class="st">&quot;Type&quot;</span>])</span>
 <span id="cb64-10"><a href="#cb64-10"></a>y <span class="op">=</span> weed_12[<span class="st">&quot;Type&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="8dbd72cd" class="cell" data-execution_count="50">
+<div id="9e20f7e4" class="cell" data-execution_count="50">
 <div class="sourceCode cell-code" id="cb65"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb65-1"><a href="#cb65-1"></a><span class="co"># make pipeline for logistic tuning</span></span>
 <span id="cb65-2"><a href="#cb65-2"></a>logistic_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb65-3"><a href="#cb65-3"></a>  [</span>
@@ -4113,7 +4113,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit logistic regression for when “Type” = “indica” is 1 and “Type” = “hybrid” is 0.</p>
-<div id="48bb6e49" class="cell" data-execution_count="51">
+<div id="91365791" class="cell" data-execution_count="51">
 <div class="sourceCode cell-code" id="cb67"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb67-1"><a href="#cb67-1"></a><span class="co"># adjust data</span></span>
 <span id="cb67-2"><a href="#cb67-2"></a>weed_13 <span class="op">=</span> weed[(weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">1</span>) <span class="op">|</span> (weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">3</span>)]</span>
 <span id="cb67-3"><a href="#cb67-3"></a>weed_13 <span class="op">=</span> weed_13.drop(columns <span class="op">=</span> [<span class="st">&quot;type_is_indica&quot;</span>, <span class="st">&quot;type_is_sativa&quot;</span>, <span class="st">&quot;type_is_hybrid&quot;</span>])</span>
@@ -4125,7 +4125,7 @@ vertical-align: -.125em;
 <span id="cb67-9"><a href="#cb67-9"></a>X <span class="op">=</span> weed_13.drop(columns <span class="op">=</span> [<span class="st">&quot;Type&quot;</span>])</span>
 <span id="cb67-10"><a href="#cb67-10"></a>y <span class="op">=</span> weed_13[<span class="st">&quot;Type&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="06095f59" class="cell" data-execution_count="52">
+<div id="2ffddae3" class="cell" data-execution_count="52">
 <div class="sourceCode cell-code" id="cb68"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb68-1"><a href="#cb68-1"></a><span class="co"># make pipeline for logistic tuning</span></span>
 <span id="cb68-2"><a href="#cb68-2"></a>logistic_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb68-3"><a href="#cb68-3"></a>  [</span>
@@ -4174,7 +4174,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit logistic regression for when “Type” = “hybrid” is 1 and “Type” = “sativa” is 0.</p>
-<div id="7b9c9c0d" class="cell" data-execution_count="53">
+<div id="c8207e8d" class="cell" data-execution_count="53">
 <div class="sourceCode cell-code" id="cb70"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb70-1"><a href="#cb70-1"></a><span class="co"># adjust data</span></span>
 <span id="cb70-2"><a href="#cb70-2"></a>weed_23 <span class="op">=</span> weed[(weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">2</span>) <span class="op">|</span> (weed[<span class="st">&quot;Type&quot;</span>] <span class="op">==</span> <span class="dv">3</span>)]</span>
 <span id="cb70-3"><a href="#cb70-3"></a>weed_23 <span class="op">=</span> weed_23.drop(columns <span class="op">=</span> [<span class="st">&quot;type_is_indica&quot;</span>, <span class="st">&quot;type_is_sativa&quot;</span>, <span class="st">&quot;type_is_hybrid&quot;</span>])</span>
@@ -4186,7 +4186,7 @@ vertical-align: -.125em;
 <span id="cb70-9"><a href="#cb70-9"></a>X <span class="op">=</span> weed_23.drop(columns <span class="op">=</span> [<span class="st">&quot;Type&quot;</span>])</span>
 <span id="cb70-10"><a href="#cb70-10"></a>y <span class="op">=</span> weed_23[<span class="st">&quot;Type&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="e3967072" class="cell" data-execution_count="54">
+<div id="8e4de37d" class="cell" data-execution_count="54">
 <div class="sourceCode cell-code" id="cb71"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb71-1"><a href="#cb71-1"></a><span class="co"># make pipeline for logistic tuning</span></span>
 <span id="cb71-2"><a href="#cb71-2"></a>logistic_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb71-3"><a href="#cb71-3"></a>  [</span>
@@ -4233,12 +4233,12 @@ vertical-align: -.125em;
 </div>
 <p>Repeat the OvO approach using SVC instead of logistic regression.</p>
 <p>Fit SVC for when “Type” = “indica” is 1 and “Type” = “sativa” is 0.</p>
-<div id="875b06af" class="cell" data-execution_count="55">
+<div id="d3d6ce46" class="cell" data-execution_count="55">
 <div class="sourceCode cell-code" id="cb73"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb73-1"><a href="#cb73-1"></a><span class="co"># set X and y</span></span>
 <span id="cb73-2"><a href="#cb73-2"></a>X <span class="op">=</span> weed_12.drop(columns <span class="op">=</span> [<span class="st">&quot;Type&quot;</span>])</span>
 <span id="cb73-3"><a href="#cb73-3"></a>y <span class="op">=</span> weed_12[<span class="st">&quot;Type&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="6e35af93" class="cell" data-execution_count="56">
+<div id="380bc857" class="cell" data-execution_count="56">
 <div class="sourceCode cell-code" id="cb74"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb74-1"><a href="#cb74-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb74-2"><a href="#cb74-2"></a>svc_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb74-3"><a href="#cb74-3"></a>  [(<span class="st">&quot;svc&quot;</span>, SVC(kernel<span class="op">=</span><span class="st">&quot;linear&quot;</span>, probability<span class="op">=</span><span class="va">False</span>))]</span>
@@ -4266,12 +4266,12 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit SVC for when “Type” = “indica” is 1 and “Type” = “hybrid” is 0.</p>
-<div id="8634a309" class="cell" data-execution_count="57">
+<div id="42403e73" class="cell" data-execution_count="57">
 <div class="sourceCode cell-code" id="cb76"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb76-1"><a href="#cb76-1"></a><span class="co"># set X and y</span></span>
 <span id="cb76-2"><a href="#cb76-2"></a>X <span class="op">=</span> weed_13.drop(columns <span class="op">=</span> [<span class="st">&quot;Type&quot;</span>])</span>
 <span id="cb76-3"><a href="#cb76-3"></a>y <span class="op">=</span> weed_13[<span class="st">&quot;Type&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="cf00ac79" class="cell" data-execution_count="58">
+<div id="5f25b1c0" class="cell" data-execution_count="58">
 <div class="sourceCode cell-code" id="cb77"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb77-1"><a href="#cb77-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb77-2"><a href="#cb77-2"></a>svc_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb77-3"><a href="#cb77-3"></a>  [(<span class="st">&quot;svc&quot;</span>, SVC(kernel<span class="op">=</span><span class="st">&quot;linear&quot;</span>, probability<span class="op">=</span><span class="va">False</span>))]</span>
@@ -4299,12 +4299,12 @@ vertical-align: -.125em;
 </div>
 </div>
 <p>Fit SVC for when “Type” = “hybrid” is 1 and “Type” = “sativa” is 0.</p>
-<div id="d9d2b870" class="cell" data-execution_count="59">
+<div id="77a3ffe1" class="cell" data-execution_count="59">
 <div class="sourceCode cell-code" id="cb79"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb79-1"><a href="#cb79-1"></a><span class="co"># set X and y</span></span>
 <span id="cb79-2"><a href="#cb79-2"></a>X <span class="op">=</span> weed_23.drop(columns <span class="op">=</span> [<span class="st">&quot;Type&quot;</span>])</span>
 <span id="cb79-3"><a href="#cb79-3"></a>y <span class="op">=</span> weed_23[<span class="st">&quot;Type&quot;</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="da3c90d8" class="cell" data-execution_count="60">
+<div id="f394ecc5" class="cell" data-execution_count="60">
 <div class="sourceCode cell-code" id="cb80"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb80-1"><a href="#cb80-1"></a><span class="co"># make pipeline for tuning </span></span>
 <span id="cb80-2"><a href="#cb80-2"></a>svc_pipeline <span class="op">=</span> Pipeline(</span>
 <span id="cb80-3"><a href="#cb80-3"></a>  [(<span class="st">&quot;svc&quot;</span>, SVC(kernel<span class="op">=</span><span class="st">&quot;linear&quot;</span>, probability<span class="op">=</span><span class="va">False</span>))]</span>
@@ -4332,7 +4332,7 @@ vertical-align: -.125em;
 </div>
 </div>
 <p><strong>Compare OvO for Logistic and SVC Models</strong></p>
-<div id="743f963c" class="cell" data-execution_count="61">
+<div id="7f1ce556" class="cell" data-execution_count="61">
 <div class="sourceCode cell-code" id="cb82"><pre class="sourceCode numberSource python number-lines code-with-copy"><code class="sourceCode python"><span id="cb82-1"><a href="#cb82-1"></a><span class="co"># create dataframe for comparing f1 values</span></span>
 <span id="cb82-2"><a href="#cb82-2"></a>f1_compare_OvO_df <span class="op">=</span> pd.DataFrame({</span>
 <span id="cb82-3"><a href="#cb82-3"></a>    <span class="st">&quot;model and target class&quot;</span>: [<span class="st">&quot;Logistic_indica_sativa&quot;</span>, <span class="st">&quot;Logistic_indica_hybrid&quot;</span>, <span class="st">&quot;Logistic_hybrid_sativa&quot;</span>, <span class="st">&quot;SVC_indica_sativa&quot;</span>, <span class="st">&quot;SVC_indica_hybrid&quot;</span>, <span class="st">&quot;SVC_hybrid_sativa&quot;</span>],</span>
