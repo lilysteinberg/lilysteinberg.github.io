@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lily Steinberg — Portfolio</title>
+  <meta name="description" content="Portfolio of data science and coding projects." />
+  <style>
+    :root { --text:#111; --muted:#555; --bg:#fff; --border:#e6e6e6; --link:#0b57d0; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--text); background:var(--bg); }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 40px 18px; }
+    header { margin-bottom: 28px; }
+    h1 { font-size: 34px; margin: 0 0 8px; }
+    .subtitle { color: var(--muted); margin: 0 0 14px; line-height: 1.5; }
+    .links a { margin-right: 14px; color: var(--link); text-decoration: none; }
+    .links a:hover { text-decoration: underline; }
+
+    .section-title { font-size: 18px; margin: 28px 0 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+    .card { border: 1px solid var(--border); border-radius: 12px; padding: 14px 14px 12px; }
+    .card h3 { margin: 0 0 6px; font-size: 16px; }
+    .card p { margin: 0 0 10px; color: var(--muted); line-height: 1.45; font-size: 14px; }
+    .card .meta { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .btnrow a { display: inline-block; margin-right: 10px; font-size: 14px; color: var(--link); text-decoration: none; }
+    .btnrow a:hover { text-decoration: underline; }
+
+    footer { margin-top: 32px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Lily Steinberg</h1>
+      <p class="subtitle">
+        Data Science / Software • Short tagline about what you build (e.g., “I build ML models and dashboards that turn messy data into decisions.”)
+      </p>
+      <div class="links">
+        <a href="https://www.linkedin.com/in/YOUR_LINKEDIN" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://github.com/YOUR_GITHUB" target="_blank" rel="noopener">GitHub</a>
+        <a href="YOUR_RESUME_LINK.pdf" target="_blank" rel="noopener">Resume</a>
+        <a href="mailto:you@email.com">Email</a>
+      </div>
+    </header>
+
+    <section>
+      <h2 class="section-title">Projects</h2>
+      <div class="grid">
+
+        <div class="card">
+          <h3>Customer Churn Prediction</h3>
+          <div class="meta">Python • scikit-learn • Classification</div>
+          <p>
+            Predict churn using feature engineering + model selection. Includes evaluation and business insights.
+          </p>
+          <div class="btnrow">
+            <a href="projects/churn_model.html" target="_blank" rel="noopener">Open project (HTML)</a>
+            <a href="https://github.com/YOUR_GITHUB/YOUR_REPO" target="_blank" rel="noopener">Code</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>NLP Sentiment Analysis</h3>
+          <div class="meta">NLP • Vectorization • Model comparison</div>
+          <p>
+            Analyze sentiment with baseline and improved models. Highlights error analysis and key takeaways.
+          </p>
+          <div class="btnrow">
+            <a href="projects/nlp_sentiment.html" target="_blank" rel="noopener">Open project (HTML)</a>
+            <a href="https://github.com/YOUR_GITHUB/YOUR_REPO" target="_blank" rel="noopener">Code</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Interactive Dashboard</h3>
+          <div class="meta">Data viz • Plotly/Altair • Storytelling</div>
+          <p>
+            Dashboard exploring trends over time with interactive filtering and clear narrative.
+          </p>
+          <div class="btnrow">
+            <a href="projects/dashboard.html" target="_blank" rel="noopener">Open project (HTML)</a>
+            <a href="https://github.com/YOUR_GITHUB/YOUR_REPO" target="_blank" rel="noopener">Code</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">About</h2>
+      <p class="subtitle">
+        2–4 sentences: what you’re looking for, strengths, and the kind of roles you want.
+        Mention tools you’re strong in (Python, SQL, ML, cloud, etc.).
+      </p>
+    </section>
+
+    <footer>
+      © <span id="y"></span> Lily Steinberg • Built with GitHub Pages
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
