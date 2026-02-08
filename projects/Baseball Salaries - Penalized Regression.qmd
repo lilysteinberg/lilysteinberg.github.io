@@ -1,0 +1,1187 @@
+---
+title: "Predicting Baseball Player's Salary in a Given Year"
+author: Lily
+format:
+    html:
+        embed-resources: true
+        code-line-numbers: true
+---
+
+**GitHub Repository**: <https://github.com/lilysteinberg/lilysteinberg.github.io>
+
+# Part 0: Explaining and Preparing Data
+
+This project designs a model that predicts a baseball player’s salary in a given year.
+
+This dataset was originally taken from the StatLib library which is maintained at Carnegie Mellon University. This is part of the data that was used in the 1988 ASA Graphics Section Poster Session. The salary data were originally from Sports Illustrated, April 20, 1987. The 1986 and career statistics were obtained from The 1987 Baseball Encyclopedia Update published by Collier Books, Macmillan Publishing Company, New York. The information collected includes:
+
+-   `AtBat`: Number of times at bat in 1986
+
+-   `Hits`: Number of hits in 1986
+
+-   `HmRun`: Number of home runs in 1986
+
+-   `Runs`: Number of runs in 1986
+
+-   `RBI`: Number of runs batted in in 1986
+
+-   `Walks`: Number of walks in 1986
+
+-   `Years`: Number of years in the major leagues
+
+-   `CAtBat`: Number of times at bat during his career
+
+-   `CHits`: Number of hits during his career
+
+-   `CHmRun`: Number of home runs during his career
+
+-   `CRuns`: Number of runs during his career
+
+-   `CRBI`: Number of runs batted in during his career
+
+-   `CWalks`: Number of walks during his career
+
+-   `League`: A factor with levels A and N indicating player’s league at the end of 1986
+
+-   `Division`: A factor with levels E and W indicating player’s division at the end of 1986
+
+-   `PutOuts`: Number of put outs in 1986
+
+-   `Assists`: Number of assists in 1986
+
+-   `Errors`: Number of errors in 1986
+
+-   `Salary`: 1987 annual salary on opening day in thousands of dollars
+
+-   `NewLeague`: A factor with levels A and N indicating player’s league at the beginning of 1987
+
+------------------------------------------------------------------------
+
+This hidden code loads in the necessary packages.
+
+```{python}
+#| code-fold: true
+
+# packages
+import pandas as pd
+import numpy as np
+from plotnine import *
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, PolynomialFeatures
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import GridSearchCV
+from plotnine import *
+
+```
+
+This hidden code imports the data.
+
+```{python}
+#| code-fold: true
+
+# data
+baseball = pd.read_csv('Hitters.csv')
+
+```
+
+This hidden code previews the data and shows a statistical summary. Output is commented out to reduce length of project.
+
+```{python}
+#| code-fold: true
+
+# preview columns and data
+#print(baseball.head())
+
+# statstical summary
+#baseball.describe()
+
+```
+
+This code investigates and cleans the data. Some output is commented out to reduce length of project.
+
+```{python}
+
+### Missing data
+#baseball.isna().any() # only Salary missing data
+#baseball.isna().sum() # 59 missing data points
+#len(baseball) # 322 total player info
+# 18% of data missing
+# Choosing to omit missing data because Salary is the dependent variable, so will not be able to train a model as accurately without it.
+
+# omit missing data
+baseball = baseball.dropna()
+
+### Data Types
+#print(baseball.dtypes) 
+# all numeric columns are apporpriatly numeric already
+
+### Outliers
+(ggplot(baseball,
+        aes(x = "Runs",
+            y = "Salary")) 
++ geom_point()
++ labs(title = "Baseball Player Salary Based on Runs in 1986")
++ theme_minimal()
+)
+
+(ggplot(baseball,
+        aes(x = "Assists",
+            y = "Salary")) 
++ geom_point()
++ labs(title = "Baseball Player Salary Based on Assists in 1986")
++ theme_minimal()
+)
+# first plot shows a potential outlier with 0 Runs or Hits but Salary = $2127.333, 
+# however, second plot shows that that Salary is not unusual given number of Assists.
+# I will not omit any outliers
+
+### Multicollinearity
+# to avoid possible issues, I will adjust the following variables that have data for both 1986 and career so that the 1986 variable is a percentage
+baseball['PAtBat'] = baseball['AtBat'] / baseball['CAtBat'] *100 
+baseball['PHits'] = baseball['Hits'] / baseball['CHits'] *100  
+baseball['PHmRun'] = baseball['HmRun'] / baseball['CHmRun'] *100 
+baseball['PHmRun'] = baseball['PHmRun'].fillna(0) # 3 instances of 0/0 in this category that result in Nan values. Replace these with 0
+baseball['PRuns'] = baseball['Runs'] / baseball['CRuns'] *100 
+baseball['PRBI'] = baseball['RBI'] / baseball['CRBI'] *100 
+baseball['PWalks'] = baseball['Walks'] / baseball['CWalks'] *100 
+
+```
+
+Summary of Data Adjustments:
+
+-   18% of Salary data is missing. I have chosen to omit this missing data, since Salary is the dependent variable and I could not train the model as accurately without it.
+
+-   After plotting against two different X variables, I decided to keep potential outliers.
+
+-   Finally, I thought there could be possibly high multicollinearity by including variables for both the stats of players in 1986 as well as in their entire careers. To reduce imperfect multicollinearity and hopefully reduce bias in the estimators, I converted the yearly 1986 stats into percentages of stats that occur in 1986 out of a player's entire career.
+
+```{python}
+
+# data partitioning for future cross-validation
+X = baseball.drop(['Salary', 'AtBat', 'Hits', 'HmRun', 'Runs', 'RBI', 'Walks'], axis=1)
+y = baseball[['Salary']]
+
+```
+
+# Part 1: Fitting Linear Regression Models with Different Penalty Types
+
+**A. Regression without regularization**
+
+1.  Create a pipeline that includes all the columns as predictors for Salary, and performs ordinary linear regression.
+
+```{python}
+
+# create column transformer for regressions that use all variables
+all_ct = ColumnTransformer(
+    [
+    ("dummify", OneHotEncoder(sparse_output = False, handle_unknown="ignore", drop = 'first'), ["League", "Division", "NewLeague"])
+    ],
+    remainder="passthrough" 
+)
+
+```
+
+```{python}
+
+# create pipeline for the Linear Model (all variables)
+lr_pipeline = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("linear_regression", LinearRegression())]
+).set_output(transform="pandas")
+
+```
+
+2.  Fit this pipeline to the full dataset, and interpret a few of the most important coefficients.
+
+```{python}
+
+# fit pipeline to full dataset
+lr_fitted = lr_pipeline.fit(X, y)
+
+```
+
+```{python}
+
+# create dataframe for storing coefficients
+coef_compare = pd.DataFrame()
+coef_compare['variable_name'] = pd.DataFrame(lr_fitted.named_steps["preprocessing"].get_feature_names_out())
+
+# add linear regression coefficients to comparison dataframe
+coef_compare['lr'] = lr_fitted.named_steps['linear_regression'].coef_.flatten()
+coef_compare["abs_lr"] = coef_compare["lr"].abs()
+coef_compare.sort_values(by = "abs_lr", ascending = False)
+
+```
+
+Important Coefficients:
+
+-   CAtBat = -1143.575478: For every additional time at bat in the player's career, he should earn 1,143.58 thousands of dollars fewer, on average.
+
+-   CHits = 764.034844: For every additional hit in the player's career, he should earn 764.03 thousands of dollars more, on average.
+
+-   PAtBat = 533.951645: For every additional percentage point of times at bat in 1986 out of a player's entire career, he should earn 533.95 thousands of dollars more, on average.
+
+-   PHits = -343.538697: For every additional percentage point of hits in 1986 out of a player's entire career, he should earn 343.54 thousands of dollars fewer, on average.
+
+-   CRuns = 335.597478: For every additional runs in the player's career, he should earn 335.60 thousands of dollars more, on average.
+
+3.  Use cross-validation to estimate the MSE you would expect if you used this pipeline to predict 1989 salaries.
+
+```{python}
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(lr_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+-scores.mean()
+
+```
+
+The MSE is 100,949.61.
+
+**B. Ridge regression**
+
+1.  Create a pipeline that includes all the columns as predictors for Salary, and performs ordinary ridge regression.
+
+```{python}
+
+# create pipeline for the Ridge Model (all variables)
+ridge_pipeline = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("ridge_regression", Ridge())]
+).set_output(transform="pandas")
+
+```
+
+2.  Use cross-validation to tune the lambda hyperparameter
+
+```{python}
+
+# tune ridge regression's lambda hyperparameter
+alphas = {'ridge_regression__alpha': np.array([0.001, 0.01, 0.1, 1, 10, 100])}
+
+gscv = GridSearchCV(ridge_pipeline, param_grid=alphas, cv = 5, scoring='r2')
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 1 yields the best mean test score.
+
+3.  Fit the pipeline with your chosen lambda to the full dataset, and interpret a few of the most important coefficients.
+
+```{python}
+# run as a ridge regression using best performing lambda to update coefficient comparison table
+ridge_pipeline_optimal = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("ridge_regression", Ridge(alpha=1))]
+)
+
+# save fitted ridge regression
+ridge_pipeline_optimal_fitted = ridge_pipeline_optimal.fit(X, y)
+
+```
+
+```{python}
+
+# add ridge regression coefficients to comparison dataframe
+coef_compare['ridge'] = ridge_pipeline_optimal_fitted.named_steps['ridge_regression'].coef_.flatten()
+coef_compare["abs_ridge"] = coef_compare["ridge"].abs()
+coef_compare.sort_values(by = "abs_ridge", ascending = False)
+
+```
+
+Important Coefficients:
+
+-   CAtBat = -567.906100: For every additional time at bat in the player's career, he should earn 567.91 thousands of dollars fewer, on average.
+
+-   PAtBat = 362.732900: For every additional percentage point of times at bat in 1986 out of a player's entire career, he should earn 362.73 thousands of dollars more, on average.
+
+-   CRuns = 333.015148: For every additional runs in the player's career, he should earn 333.02 thousands of dollars more, on average.
+
+-   CRBI = 310.068221: For every additional number of runs batted in the player's career, he should earn 310.07 thousands of dollars more, on average.
+
+-   CHits = 300.825179: For every additional hit in the player's career, he should earn 300.83 thousands of dollars more, on average.
+
+4.  Report the MSE you would expect if you used this pipeline to predict 1989 salaries.
+
+```{python}
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(ridge_pipeline_optimal,
+                         X=X,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+-scores.mean()
+
+```
+
+The MSE is 100,396.87.
+
+**C. Lasso Regression**
+
+1.  Create a pipeline that includes all the columns as predictors for Salary, and performs ordinary lasso regression.
+
+```{python}
+
+# create pipeline for the Lasso Model (all variables)
+lasso_pipeline = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("lasso_regression", Lasso())]
+).set_output(transform="pandas")
+
+```
+
+2.  Use cross-validation to tune the lambda hyperparameter.
+
+```{python}
+
+# tune lasso regression's lambda hyperparameter
+alphas = {'lasso_regression__alpha': np.array([0.001, 0.01, 0.1, 1, 10, 100])}
+
+gscv = GridSearchCV(lasso_pipeline, param_grid=alphas, cv = 5, scoring='r2', n_jobs=-1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 10 yields the best mean test score.
+
+3.  Fit the pipeline with your chosen lambda to the full dataset, and interpret a few of the most important coefficients.
+
+```{python}
+
+# run as a lasso regression using best performing lambda to update coefficient comparison table
+lasso_pipeline_optimal = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("lasso_regression", Lasso(alpha=10))]
+)
+
+# save fitted lasso regression
+lasso_pipeline_optimal_fitted = lasso_pipeline_optimal.fit(X, y)
+
+```
+
+```{python}
+
+# add lasso regression coefficients to comparison dataframe
+coef_compare['lasso'] = lasso_pipeline_optimal_fitted.named_steps['lasso_regression'].coef_.flatten()
+coef_compare["abs_lasso"] = coef_compare["lasso"].abs()
+coef_compare.sort_values(by = "abs_lasso", ascending = False)
+
+```
+
+Important Coefficients:
+
+-   Years = -246.018985: For every additional year a player spends in the major leagues, he should earn 246.02 thousands of dollars fewer, on average.
+
+-   CRBI = 180.379095: For every additional number of runs batted in the player's career, he should earn 180.38 thousands of dollars more, on average.
+
+-   PRBI = -144.707046: For every additional percentage point of runs batted in 1986 out of a player's entire career, he should earn 144.71 thousands of dollars fewer, on average.
+
+-   CRuns = 142.963151: For every additional runs in the player's career, he should earn 142.96 thousands of dollars more, on average.
+
+-   PutOuts = 95.150742: For every additional put out in 1986, a player should earn 95.15 thousands of dollars more, on average.
+
+4.  Report the MSE you would expect if you used this pipeline to predict 1989 salaries.
+
+```{python}
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(lasso_pipeline_optimal,
+                         X=X,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+-scores.mean()
+
+```
+
+The MSE is 101,930.67.
+
+**D. Elastic Net**
+
+1.  Create a pipeline that includes all the columns as predictors for Salary, and performs ordinary elastic net regression.
+
+```{python}
+
+# create pipeline for the Elastic Net (all variables)
+elastic_pipeline = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("elastic_net", ElasticNet())]
+).set_output(transform="pandas")
+
+```
+
+2.  Use cross-validation to tune the lambda and alpha hyperparameters.
+
+```{python}
+
+# tune elastic net's lambda and alpha hyperparameters
+param_grid = {
+    "elastic_net__alpha": [1, 10, 100],
+    "elastic_net__l1_ratio": np.arange(0.0, 1.2, 0.2),
+}
+
+gscv = GridSearchCV(elastic_pipeline, param_grid=param_grid, cv = 5, scoring='r2', n_jobs=-1)
+
+# feed in the data
+gscv_fitted_elastic = gscv.fit(X, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted_elastic.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Alpha = 10 and l1 = 0 yields the best mean test score.
+
+3.  Fit the pipeline with your chosen lambda to the full dataset, and interpret a few of the most important coefficients.
+
+```{python}
+
+# run as an elastic net using best performing parameters to update coefficient comparison table
+elastic_pipeline_optimal = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("elastic_net", ElasticNet(alpha=10, l1_ratio=1))]
+)
+
+# save fitted elastic net 
+elastic_pipeline_optimal_fitted = elastic_pipeline_optimal.fit(X, y)
+
+```
+
+```{python}
+
+# add elastic net coefficients to comparison dataframe
+coef_compare['elastic'] = elastic_pipeline_optimal_fitted.named_steps['elastic_net'].coef_.flatten()
+coef_compare["abs_elastic"] = coef_compare["elastic"].abs()
+coef_compare.sort_values(by = "abs_elastic", ascending = False)
+
+```
+
+Important Coefficients:
+
+-   Years = -246.018985: For every additional year a player spends in the major leagues, he should earn 246.02 thousands of dollars fewer, on average.
+
+-   CRBI = 180.379095: For every additional number of runs batted in the player's career, he should earn 180.38 thousands of dollars more, on average.
+
+-   PRBI = -144.707046: For every additional percentage point of runs batted in 1986 out of a player's entire career, he should earn 144.71 thousands of dollars fewer, on average.
+
+-   CRuns = 142.963151: For every additional runs in the player's career, he should earn 142.96 thousands of dollars more, on average.
+
+-   PutOuts = 95.150742: For every additional put out in 1986, a player should earn 95.15 thousands of dollars more, on average.
+
+4.  Report the MSE you would expect if you used this pipeline to predict 1989 salaries.
+
+```{python}
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(elastic_pipeline_optimal,
+                         X=X,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+-scores.mean()
+
+```
+
+The MSE is 101,930.67.
+
+# Part 2: Determining Which Combination of Features and Model Performs Best
+
+**Important variables:**
+
+-   numeric: CRuns
+    -   This variable appears in the top 5 variables for linear, ridge, and lasso models. (elastic net model = lasso model with optimal l1_ratio)
+-   five numeric: CRuns, CAtBat, PAtBat, CHits, CRBI
+    -   These variables appear in the top 5 variables for at least two of the linear, ridge, and lasso models. (elastic net model = lasso model with optimal l1_ratio)
+-   categorical: Division
+    -   This variable is the most important categorical variable for linear, ridge, and lasso models. (elastic net model = lasso model with optimal l1_ratio)
+
+This code defines three different 'X's to capture the different combinations of X variables I'll try with each model specification.
+
+```{python}
+
+# defining data for the most important numeric variable
+X_1n = baseball[['CRuns']]
+
+# defining data for the most important five numeric variables
+X_5n = baseball[['CRuns', 'CAtBat', 'PAtBat', 'CHits', 'CRBI']]
+
+# defining data for most important categorical variable (and interactions)
+X_1c = baseball[['CRuns', 'CAtBat', 'PAtBat', 'CHits', 'CRBI', 'Division']]
+
+```
+
+This code sets up the different column transformers I will use for the models.
+
+```{python}
+
+# create column transformer for regressions that use limited variables
+lim_ct = ColumnTransformer(
+    [
+    ("dummify", OneHotEncoder(sparse_output = False, handle_unknown="ignore"), ["Division"])
+    ],
+    remainder="passthrough" 
+)
+
+# create column transformer for regressions that does an interaction
+interaction_ct = ColumnTransformer(
+    [
+    ("interaction", PolynomialFeatures(interaction_only = True), ["dummify__Division_W", "remainder__CRuns", "remainder__CAtBat", "remainder__PAtBat", "remainder__CHits", "remainder__CRBI"])
+    ],
+    remainder="passthrough"
+)
+
+```
+
+**Linear Regression**
+
+1.  Numeric Variable
+
+```{python}
+
+# create pipeline for the Limited Linear Models
+lr_lim_pipeline = Pipeline(
+  [("standardize", StandardScaler()),
+  ("linear_regression", LinearRegression())]
+).set_output(transform="pandas")
+
+# fit with the 1 numerical variable data
+lr_lim_fitted = lr_lim_pipeline.fit(X_1n, y)
+
+# create list to store MSE values
+MSE_compare = []
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(lr_lim_pipeline,
+                         X=X_1n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "lr_1n", "MSE": -scores.mean()})
+
+```
+
+2.  Five numeric variables
+
+```{python}
+
+# fit with the 5 numerical variables data
+lr_lim_fitted = lr_lim_pipeline.fit(X_5n, y)
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(lr_lim_pipeline,
+                         X=X_5n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "lr_5n", "MSE": -scores.mean()})
+
+# create list to store coefficient values -- for Part 3.A.
+coef_compare_expanded = pd.DataFrame()
+coef_compare_expanded['variable_name'] = pd.DataFrame(lr_lim_fitted.named_steps["standardize"].get_feature_names_out())
+
+# save coefficients -- for Part 3.A.
+coef_compare_expanded['lr_5n'] = lr_lim_fitted.named_steps['linear_regression'].coef_.flatten()
+
+```
+
+3.  Five numeric variables with interactions
+
+```{python}
+
+# create pipeline for the Linear Interaction Model
+lr_int_pipeline = Pipeline(
+  [("preprocessing1", lim_ct),
+  ("preprocessing2", interaction_ct),
+  ("standardize", StandardScaler()),
+  ("linear_regression", LinearRegression())]
+).set_output(transform="pandas")
+
+# fit with the 5 numerical variables data and categorical interaction
+lr_int_fitted = lr_int_pipeline.fit(X_1c, y)
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(lr_int_pipeline,
+                         X=X_1c,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "lr_1c", "MSE": -scores.mean()})
+
+```
+
+**Ridge Regression**
+
+1.  Numeric variable
+
+```{python}
+
+# Create pipeline for the Limited Ridge Models
+ridge_lim_pipeline = Pipeline(
+  [("standardize", StandardScaler()),
+  ("ridge_regression", Ridge())]
+).set_output(transform="pandas")
+
+# tune ridge regression's lambda hyperparameter
+alphas = {'ridge_regression__alpha': np.array([0.001, 0.01, 0.1, 1, 10, 100])}
+
+gscv = GridSearchCV(ridge_lim_pipeline, param_grid=alphas, cv = 5, scoring='r2')
+
+# feed in the data
+gscv_fitted = gscv.fit(X_1n, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 10 yields the best mean test score.
+
+```{python}
+
+# run as a ridge regression using best performing lambda
+ridge_lim_pipeline_optimal_1n = Pipeline(
+  [("standardize", StandardScaler()),
+  ("ridge_regression", Ridge(alpha=10))]
+)
+
+# save fitted ridge regression
+ridge_pipeline_optimal_fitted = ridge_lim_pipeline_optimal_1n.fit(X_1n, y)
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(ridge_lim_pipeline_optimal_1n,
+                         X=X_1n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "ridge_1n", "MSE": -scores.mean()})
+
+```
+
+2.  Five numeric variables
+
+```{python}
+
+# feed in the data
+gscv_fitted = gscv.fit(X_5n, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 0.1 yields the best mean test score.
+
+```{python}
+
+# run as a ridge regression using best performing lambda
+ridge_lim_pipeline_optimal_5n = Pipeline(
+  [("standardize", StandardScaler()),
+  ("ridge_regression", Ridge(alpha=0.1))]
+)
+
+# save fitted ridge regression
+ridge_pipeline_optimal_fitted = ridge_lim_pipeline_optimal_5n.fit(X_5n, y)
+
+# cross-validation to estimate MSE
+scores = cross_val_score(ridge_lim_pipeline_optimal_5n,
+                         X=X_5n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "ridge_5n", "MSE": -scores.mean()})
+
+# save coefficients -- for Part 3.A.
+coef_compare_expanded['ridge_5n'] = ridge_pipeline_optimal_fitted.named_steps['ridge_regression'].coef_.flatten()
+
+```
+
+3.  Five numeric variables with interactions
+
+```{python}
+
+# Create pipeline for the Ridge Interaction Model
+ridge_int_pipeline = Pipeline(
+  [("preprocessing1", lim_ct),
+  ("preprocessing2", interaction_ct),
+  ("standardize", StandardScaler()),
+  ("ridge_regression", Ridge())]
+).set_output(transform="pandas")
+
+# tune ridge regression's lambda hyperparameter
+alphas = {'ridge_regression__alpha': np.array([0.001, 0.01, 0.1, 1, 10, 100])}
+
+gscv = GridSearchCV(ridge_int_pipeline, param_grid=alphas, cv = 5, scoring='r2')
+
+# feed in the data
+gscv_fitted = gscv.fit(X_1c, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 0.01 yields the best mean test score.
+
+```{python}
+
+# run as a ridge regression using best performing lambda
+ridge_int_pipeline_optimal = Pipeline(
+  [("preprocessing1", lim_ct),
+  ("preprocessing2", interaction_ct),
+  ("standardize", StandardScaler()),
+  ("ridge_regression", Ridge(alpha=0.01))]
+).set_output(transform="pandas")
+
+# save fitted ridge regression
+ridge_pipeline_optimal_fitted = ridge_int_pipeline_optimal.fit(X_1c, y)
+
+# cross-validation to estimate MSE
+scores = cross_val_score(ridge_int_pipeline_optimal,
+                         X=X_1c,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "ridge_1c", "MSE": -scores.mean()})
+
+```
+
+**Lasso Regression**
+
+1.  Numeric variable
+
+```{python}
+
+# Create pipeline for the Lasso Model
+lasso_lim_pipeline = Pipeline(
+  [("standardize", StandardScaler()),
+  ("lasso_regression", Lasso(max_iter=20000))]
+).set_output(transform="pandas")
+
+# tune lasso regression's lambda hyperparameter
+alphas = {'lasso_regression__alpha': np.array([0.001, 0.01, 0.1, 1, 10, 100])}
+
+gscv = GridSearchCV(lasso_lim_pipeline, param_grid=alphas, cv = 5, scoring='r2')
+
+# feed in the data
+gscv_fitted = gscv.fit(X_1n, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 10 yields the best mean test score.
+
+```{python}
+
+# run as a lasso regression using best performing lambda
+lasso_lim_pipeline_optimal_1n = Pipeline(
+  [("standardize", StandardScaler()),
+  ("lasso_regression", Lasso(alpha=10))]
+)
+
+# save fitted lasso regression
+lasso_pipeline_optimal_fitted = lasso_lim_pipeline_optimal_1n.fit(X_1n, y)
+
+# cross-validation to estimate MSE
+scores = cross_val_score(lasso_lim_pipeline_optimal_1n,
+                         X=X_1n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "lasso_1n", "MSE": -scores.mean()})
+
+```
+
+2.  Five numeric variables
+
+```{python}
+# feed in the data
+gscv_fitted = gscv.fit(X_5n, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 0.1 yields the best mean test score.
+
+```{python}
+
+# run as a lasso regression using best performing lambda
+lasso_lim_pipeline_optimal_5n = Pipeline(
+  [("standardize", StandardScaler()),
+  ("lasso_regression", Lasso(alpha=0.1))]
+)
+
+# save fitted lasso regression
+lasso_pipeline_optimal_fitted = lasso_lim_pipeline_optimal_5n.fit(X_5n, y)
+
+# cross-validation to estimate MSE
+scores = cross_val_score(lasso_lim_pipeline_optimal_5n,
+                         X=X_5n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5,
+                         n_jobs=-1)
+
+# save MSE value
+MSE_compare.append({"model": "lasso_5n", "MSE": -scores.mean()})
+
+```
+
+3.  Five numeric variables with interactions
+
+```{python}
+
+# Create pipeline for the Lasso Interaction Model
+lasso_int_pipeline = Pipeline(
+  [("preprocessing1", lim_ct),
+  ("preprocessing2", interaction_ct),
+  ("standardize", StandardScaler(with_mean=False)),
+  ("lasso_regression", Lasso(max_iter=50000, tol=1e-3))]
+).set_output(transform="pandas")
+
+# tune lasso regression's lambda hyperparameter
+alphas = {'lasso_regression__alpha': np.array([0.1, 1, 10, 100])}
+
+gscv = GridSearchCV(lasso_int_pipeline, param_grid=alphas, cv = 5, scoring='r2', n_jobs=1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X_1c, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Lambda = 0.1 yields the best mean test score.
+
+*NOTE:* Previous Lasso tuning in this project also used 0.001 and 0.01 as possible alpha hyperparameter values. However, given the weak interaction terms, the Lasso regression did not converge with these values even when max iteration and tolerance were manually adjusted and StandardScaler was set to with_mean=False to accommodate potentially sparse data. Therefore, I omitted these values from the tuning.
+
+```{python}
+
+# run as a lasso regression using best performing lambda
+lasso_int_pipeline_optimal = Pipeline(
+  [("preprocessing1", lim_ct),
+  ("preprocessing2", interaction_ct),
+  ("standardize", StandardScaler(with_mean=False)),
+  ("lasso_regression", Lasso(alpha=0.1, max_iter=50000, tol=1e-3))]
+).set_output(transform="pandas")
+
+# save fitted lasso regression
+lasso_pipeline_optimal_fitted = lasso_int_pipeline_optimal.fit(X_1c, y)
+
+# cross-validation to estimate MSE
+scores = cross_val_score(lasso_int_pipeline_optimal,
+                         X=X_1c,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5,
+                         n_jobs=1)
+
+# save MSE value
+MSE_compare.append({"model": "lasso_1c", "MSE": -scores.mean()})
+
+```
+
+**Elastic Net**
+
+1.  Numeric variable
+
+```{python}
+
+# Create pipeline for the Elastic Net Model
+elastic_lim_pipeline_1n = Pipeline(
+  [("standardize", StandardScaler()),
+  ("elastic_net", ElasticNet())]
+).set_output(transform="pandas")
+
+# tune elastic net regression's lambda and alpha hyperparameters
+param_grid = {
+    "elastic_net__alpha": [1, 10, 100],
+    "elastic_net__l1_ratio": np.arange(0.0, 1.2, 0.2),
+}
+
+gscv = GridSearchCV(elastic_lim_pipeline_1n, param_grid=param_grid, cv = 5, scoring='r2', n_jobs=-1)
+
+# feed in the data
+gscv_fitted_elastic = gscv.fit(X_1n, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted_elastic.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Alpha = 10 and l1 = 1 yields the best mean test score.
+
+```{python}
+# run as an elastic net using best performing parameters
+elastic_pipeline_optimal_1n = Pipeline(
+  [("standardize", StandardScaler()),
+  ("elastic_net", ElasticNet(alpha=10, l1_ratio=1))]
+)
+
+# save fitted elastic net 
+elastic_pipeline_optimal_fitted = elastic_pipeline_optimal_1n.fit(X_1n, y)
+
+# cross-validation to estimate MSE 
+scores = cross_val_score(elastic_pipeline_optimal_1n,
+                         X=X_1n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "elastic_1n", "MSE": -scores.mean()})
+
+```
+
+2.  Five numeric variables
+
+```{python}
+# feed in the data
+gscv_fitted = gscv.fit(X_5n, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Alpha = 1 and l1 = 1 yields the best mean test score.
+
+```{python}
+
+# run as an elastic net using best performing hyperparameters
+elastic_pipeline_optimal_5n = Pipeline(
+  [("standardize", StandardScaler()),
+  ("elastic_net", ElasticNet(alpha=1, l1_ratio=1))]
+)
+
+# save fitted elastic net 
+elastic_pipeline_optimal_fitted = elastic_pipeline_optimal_5n.fit(X_5n, y)
+
+# cross-validation to estimate MSE 
+scores = cross_val_score(elastic_pipeline_optimal_5n,
+                         X=X_5n,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# save MSE value
+MSE_compare.append({"model": "elastic_5n", "MSE": -scores.mean()})
+
+```
+
+3.  Five numeric variables with interactions
+
+```{python}
+
+# create pipeline for the Elastic Net Interaction Model
+elastic_int_pipeline = Pipeline(
+  [("preprocessing1", lim_ct),
+  ("preprocessing2", interaction_ct),
+  ("standardize", StandardScaler()),
+  ("elastic_net", ElasticNet(max_iter=20000))]
+).set_output(transform="pandas")
+
+# tune elastic net regression's lambda and alpha hyperparameters
+param_grid = {
+    "elastic_net__alpha": [1, 10, 100],
+    "elastic_net__l1_ratio": np.arange(0.0, 1.2, 0.2),
+}
+
+gscv = GridSearchCV(elastic_int_pipeline, param_grid=param_grid, cv = 5, scoring='r2', n_jobs=-1)
+
+# feed in the data
+gscv_fitted_elastic = gscv.fit(X_1c, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted_elastic.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+
+```
+
+Alpha = 1 and l1 = 1 yields the best mean test score.
+
+```{python}
+
+# run as an elastic net using best performing hyperparameters
+elastic_pipeline_optimal_1c = Pipeline(
+  [("preprocessing1", lim_ct),
+  ("preprocessing2", interaction_ct),
+  ("standardize", StandardScaler()),
+  ("elastic_net", ElasticNet(alpha=1, l1_ratio=1, max_iter=20000))]
+)
+
+# save fitted elastic net 
+elastic_pipeline_optimal_fitted = elastic_pipeline_optimal_1c.fit(X_1c, y)
+
+# cross-validation to estimate MSE
+scores = cross_val_score(elastic_pipeline_optimal_1c,
+                         X=X_1c,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5,
+                         n_jobs=-1)
+
+# save MSE value
+MSE_compare.append({"model": "elastic_1c", "MSE": -scores.mean()})
+
+```
+
+```{python}
+
+# display saved MSE values in dataframe
+MSE_compare_df = pd.DataFrame(MSE_compare)
+MSE_compare_df.sort_values(by = "MSE", ascending = True)
+
+```
+
+Based on the validation metric of MSE, the Ridge Regression using only one numeric variable (CRuns) and a lambda of 10 performed the best.
+
+# Part 3: Discussion
+
+**A. Ridge**
+
+1.  Compare your Ridge models with your ordinary regression models. How did your coefficients compare? Why does this make sense?
+
+```{python}
+# show example of linear vs. ridge regression coefficients,
+# taken from the 5 numerical variable example
+coef_compare_expanded
+
+```
+
+As seen in the above example comparing the coefficient values from the linear and ridge regressions from Part 2, each using 5 numeric variables, one can see that the Ridge Regression consistently has coefficient values that are closer to 0. This makes sense because Ridge Regression restricts the flexibility of betas and introduces penalties aimed to not only reduce the sum of squared error, but also make the beta values themselves small.
+
+**B. Lasso**
+
+1.  Compare your Lasso model in I with your three Lasso models in II. Did you get the same lambda results? Why does this make sense? Did you get the same MSEs? Why does this make sense?
+
+In Part 1, my Lasso Model had a lambda of 10 and an MSE of 101,930.67.
+
+In Part 2, my Lasso Models had the following:
+
+-   1 numeric: MSE = lambda = 10, 143,793.449159
+-   5 numeric: lambda = 0.1, MSE = 1,13,331.539706
+-   interaction: lambda = 0.1, MSE = 96,629.837868
+
+I did not get the same lambda values or MSEs. This makes sense because each model had different information to train it, so each also had different optimal balances between minimizing the sum of squared errors and making the betas themselves small.
+
+**C. Elastic Net**
+
+1.  Compare your MSEs for the Elastic Net models with those for the Ridge and Lasso models. Why does it make sense that Elastic Net always “wins”?
+
+Interestingly, my models in Part 2 show that the best performing Elastic Net model actually had a higher MSE than the Lasso, Ridge, and Linear models I made with the 5 most important numeric values interacting with the most important categorical variable.
+
+In theory, the Elastic Net models should always win because they can take the best from both the Ridge and Lasso penalties. Even if the Ridge or Lasso penalties works better being the only penalty considered, the Elastic Net model can achieve that by tuning the alpha and l1 parameters (l1_ratio = 1 is Lasso, and l1_ratio = 0 is Ridge).
+
+Lasso and Ridge may perform better, as it does in my findings, because Elastic Net is over-regularizing.
+
+# Part 4: Fitting Best Model
+
+1.  Fit your final best pipeline on the full dataset, and summarize your results in a few short sentences and a plot.
+
+```{python}
+
+# I am remaking the pipeline to include the preprocessing column transformation that handles all variables
+lasso_final_pipeline = Pipeline(
+  [("preprocessing", all_ct),
+  ("standardize", StandardScaler()),
+  ("lasso_regression", Lasso(alpha=0.1))]
+)
+
+# save fitted lasso regression
+lasso_final_fitted = lasso_final_pipeline.fit(X, y)
+
+# cross-validation to estimate MSE of linear regression pipeline
+scores = cross_val_score(lasso_final_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="neg_mean_squared_error",
+                         cv=5)
+
+# MSE value
+lasso_final_score = -scores.mean()
+lasso_final_score
+
+```
+
+The MSE is 100,653.91631317357.
+
+Using the pipeline with all the features yielded a higher MSE than when running it with just the top five numeric and top one categorical variables (with interactions). This can happen because the model was tuned with a simpler dataset. The impact this difference can have is demonstrated by the fact that when I ran the Lasso Regression in Part 1 with all variables, the optimal alpha was 10, whereas here it is 0.1 (based on the model from Part 2).
+
+This hidden code plots the graph.
+
+```{python}
+#| code-fold: true
+
+# prepare data
+new_row = pd.DataFrame([{"model": "lasso_final", "MSE": lasso_final_score}])
+graph_df = pd.concat([MSE_compare_df, new_row])
+
+# graph
+(ggplot(graph_df,
+        aes(x = "model",
+            y = "MSE")) 
++ geom_point()
++ labs(title = "MSE values of all models")
++ theme_minimal()
++ theme(axis_text_x=element_text(angle=45, hjust=1))
+)
+
+```
+
+This graph shows the MSE values of all model types and feature combinations generated in Part 2. The X axis has a category for each model, named by specifying the regression penalty and the features included ("elastic" = elastic net, "lasso" = lasso regression, "lr" = linear regression, "ridge" = ridge regression, "1c" = five most important numerical variables with interactions with most important categorical variable, "1n" = most important numerical variable, "5n" = five most important numerical variables, "final" = best performing model/feature combination fit with entire dataset including all variables.) The Y axis represents Mean Squared Error (MSE) values. Models with smaller MSE values perform better. The points above each model type corresponds to that model's MSE value.
+
+This graph shows that the final Lasso Regression model ("lasso_final") has a relatively small MSE value out of all models generated, though not the lowest. The lowest MSE value occurred with the Lasso Regression model trained and tuned with the top five numerical and top one categorical variables, which uses the same hyperparameters as the final Lasso Regression model.

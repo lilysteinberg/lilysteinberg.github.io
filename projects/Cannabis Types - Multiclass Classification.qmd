@@ -1,0 +1,1179 @@
+---
+title: "Predicting Cannabis Types Based on Strain's Reported Effects and Flavors"
+author: Lily
+format:
+    html:
+        embed-resources: true
+        code-line-numbers: true
+---
+
+**GitHub Repository**: <https://github.com/lilysteinberg/lilysteinberg.github.io>
+
+# Part 0: Explaining and Preparing Data
+
+This project designs a model that predicts if a strain of cannabis is classified as indica, sativa, or hybrid, given the reported effects and flavors.
+
+The dataset consists of user reviews of different strains of cannabis. Users rated their experiences with the cannabis strain on a scale of 1 to 5. They also selected words from a long list to describe the Effects and the Flavor of the cannabis. The original dataset can be found here: <https://www.kaggle.com/datasets/kingburrito666/cannabis-strains>. Some data has already been cleaned, and the columns converted to dummy variables.
+
+------------------------------------------------------------------------
+
+This hidden code loads in the necessary packages.
+
+```{python}
+#| code-fold: true
+
+# packages
+import numpy as np
+import pandas as pd
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, ConfusionMatrixDisplay, RocCurveDisplay
+from sklearn.model_selection import GridSearchCV, cross_val_score, cross_val_predict
+import matplotlib.pyplot as plt
+```
+
+This hidden code imports the data.
+
+```{python}
+#| code-fold: true
+# data
+weed = pd.read_csv("cannabis_full.csv")
+```
+
+# Part 1: Binary Classification -- Distinguishing Indica and Sativa Strains
+
+```{python}
+# limit dataset to indica and sativa
+weed_limited = weed[(weed["Type"] == "indica") | (weed["Type"] == "sativa")]
+
+# adjust data to work with models
+weed_limited = weed_limited.drop(["Strain", "Effects", "Flavor"], axis=1)
+weed_limited = weed_limited * 1
+weed_limited = weed_limited.dropna() # count is now 1,118 (was 1,139)
+
+# define X and y
+X = weed_limited.drop(columns = ["Type"])
+y = weed_limited['Type']
+```
+
+I will be using F1 scores as the metric for model selection. It combines precision and recall, and like ROC AUC, it is less misleading than accuracy. Importantly, it worked better for the models built in Part 2, and since those will be compared against the models also built in Part 1, I will use it throughout.
+
+**1: LDA**
+
+Find and fit the best model
+
+```{python}
+# make pipeline
+lda_pipeline = Pipeline(
+  [("lda", LinearDiscriminantAnalysis())]
+)
+
+# fit
+lda_fitted = lda_pipeline.fit(X, y)
+```
+
+Cross-validated F1 score
+
+```{python}
+# create empty list of F1 score
+f1_compare_p1 = []
+
+# cross-validation to estimate F1 score
+scores = cross_val_score(lda_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5)
+
+# add to list
+f1_compare_p1.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(lda_pipeline, X, y, cv=5)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**2: QDA**
+
+Find and fit the best model (tune QDA's reg_param hyperparameter because there is a warning about collinearity otherwise).
+
+```{python}
+# make pipeline for tuning
+qda_pipeline = Pipeline(
+  [("qda", QuadraticDiscriminantAnalysis())]
+)
+
+tuning = {'qda__reg_param': np.arange(0, 1, 0.1)}
+
+gscv = GridSearchCV(qda_pipeline, param_grid=tuning, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in data
+gscv_fitted = gscv.fit(X, y)
+gscv_fitted.cv_results_
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+```
+
+```{python}
+# make optimal pipeline
+qda_best_pipeline = Pipeline(
+  [("qda", QuadraticDiscriminantAnalysis(reg_param = 0.2))]
+).set_output(transform="pandas")
+
+# fit
+qda_best_pipeline_fitted = qda_best_pipeline.fit(X, y)
+```
+
+Cross-validated F1 score
+
+```{python}
+# cross-validation to estimate f1
+scores = cross_val_score(qda_best_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5)
+
+# add to list
+f1_compare_p1.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(qda_best_pipeline, X, y, cv=5)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**3: SVC**
+
+Find and fit the best model
+
+```{python}
+# make pipeline for tuning 
+svc_pipeline = Pipeline(
+  [("svc", SVC(kernel="linear", probability=True))]
+)
+
+param_grid = {'svc__C': [0.01, 0.1, 1, 10, 100]}
+
+svc_pipeline_grid = GridSearchCV(svc_pipeline, param_grid, cv=5)
+svc_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVC inside it
+svc_pipeline_best = svc_pipeline_grid.best_estimator_
+svc_model_best = svc_pipeline_best.named_steps["svc"]
+
+# fit
+svc_fitted = svc_pipeline_best.fit(X, y)
+```
+
+Cross-validated F1 score
+
+```{python}
+# cross-validation to estimate f1
+scores = cross_val_score(svc_pipeline_best,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5)
+
+# add to list
+f1_compare_p1.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(svc_pipeline_best, X, y, cv=5)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**4: SVM**
+
+Find and fit the best model
+
+```{python}
+# make pipeline for tuning 
+svm_pipeline = Pipeline(
+  [("svm", SVC())]
+)
+
+param_grid = {
+    'svm__C': [0.1, 1, 10, 100, 1000],
+    'svm__gamma': [1, 0.1, 0.01, 0.001, 0.0001],
+    'svm__kernel': ['rbf', 'poly']
+    }
+
+svm_pipeline_grid = GridSearchCV(svm_pipeline, param_grid, cv=5)
+svm_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVM inside it
+svm_pipeline_best = svm_pipeline_grid.best_estimator_
+svm_model_best = svm_pipeline_best.named_steps["svm"]
+
+# fit
+svm_fitted = svc_pipeline_best.fit(X, y)
+```
+
+Cross-validated F1 score
+
+```{python}
+# cross-validation to estimate f1
+scores = cross_val_score(svm_pipeline_best,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5)
+
+# add to list
+f1_compare_p1.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(svm_pipeline_best, X, y, cv=5)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**Model Performance Comparison**
+
+```{python}
+# create dataframe for comparing F1 scores
+f1_compare_p1_df = pd.DataFrame({
+    "model": ["LDA", "QDA", "SVC", "SVM"],
+    "F1 scores": f1_compare_p1
+})
+
+f1_compare_p1_df.sort_values(by = "F1 scores", ascending = False)
+```
+
+The SVM model performed the best, according to F1 score.
+
+# Part 2: Natural Mulitclass -- Distinguishing Indica, Sativa, and Hybrid Strains
+
+```{python}
+# adjust data
+weed = weed.drop(columns = ["Strain", "Effects", "Flavor"])
+weed = weed * 1
+weed = weed.dropna()
+
+# assign y categories to numbers
+label_map = {'indica': 1, 'sativa': 2, 'hybrid': 3}
+weed['Type'] = weed["Type"].map(label_map)
+
+# define X and y
+X = weed.drop(columns = ["Type"])
+y = weed['Type']
+```
+
+**Decision Tree**
+
+Find and fit the best model
+
+```{python}
+# make pipeline for decision tree tuning
+dt_pipeline = Pipeline(
+    [
+     ("dt", DecisionTreeClassifier())
+    ],
+).set_output(transform="pandas")
+
+tuning = {
+    'dt__ccp_alpha': np.arange(0, 1, 0.1),
+    'dt__max_depth': np.arange(1,10, 1)
+}
+
+gscv = GridSearchCV(dt_pipeline, param_grid=tuning, cv = 5, scoring='f1_macro')
+
+# feed in data
+gscv_fitted = gscv.fit(X, y)
+gscv_fitted.cv_results_
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+```
+
+```{python}
+dt_best_pipeline = Pipeline(
+    [
+     ("dt", DecisionTreeClassifier(ccp_alpha=0.0, max_depth=3))
+    ],
+).set_output(transform="pandas")
+
+# fit
+dt_best_pipeline_fitted = dt_best_pipeline.fit(X, y)
+```
+
+Plot
+
+```{python}
+# get list of feature names
+feature_names = weed.columns
+
+# plot tree
+plot_tree(dt_best_pipeline.named_steps["dt"], feature_names = feature_names, class_names = ["indica", "sativa", "hybrid"], filled=True)
+```
+
+Interpretation:
+
+The decision tree shows a depth of 4 nodes. The root asks whether the strain is considered "focused" or not. If true, then is the strain "creative", "pungent", or "euphoric". Depending on the answers, the strain will be categorized as hybrid or sativa. If the strain was not "focused", then it will be checked if it is "sweet", "happy", or "sage". Depending on the answers, the strain will be categorized as indica or hybrid.
+
+Cross-validated F1 Score
+
+```{python}
+# create empty list of f1_macro scores
+f1_compare = []
+
+# cross-validation to estimate f1_macro
+scores = cross_val_score(dt_best_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5)
+
+# add to list
+f1_compare.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(dt_best_pipeline, X, y, cv=5)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**LDA**
+
+Find and fit the best model
+
+```{python}
+# make pipeline for LDA multiclass
+ldam_pipeline = Pipeline(
+  [
+  ("lda", LinearDiscriminantAnalysis())]
+)
+
+# fit
+ldam_fitted = ldam_pipeline.fit(X, y)
+```
+
+Cross-validated F1 Score
+
+```{python}
+# cross-validation to estimate f1_macro
+scores = cross_val_score(ldam_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5)
+
+# add to list
+f1_compare.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(ldam_pipeline, X, y, cv=5)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**QDA**
+
+Find and fit the best model
+
+```{python}
+# make pipeline for tuning
+qdam_pipeline = Pipeline(
+  [("qda", QuadraticDiscriminantAnalysis())]
+)
+
+tuning = {'qda__reg_param': np.arange(0, 1, 0.1)}
+
+gscv = GridSearchCV(qda_pipeline, param_grid=tuning, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in data
+gscv_fitted = gscv.fit(X, y)
+gscv_fitted.cv_results_
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+```
+
+```{python}
+# make optimal pipeline
+qdam_best_pipeline = Pipeline(
+  [("qda", QuadraticDiscriminantAnalysis(reg_param = 0.1))]
+).set_output(transform="pandas")
+
+# fit
+qdam_best_pipeline_fitted = qdam_best_pipeline.fit(X, y)
+```
+
+Cross-validated F1 Score
+
+```{python}
+# cross-validation to estimate f1_macro
+scores = cross_val_score(qdam_best_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5)
+
+# add to list
+f1_compare.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(qdam_best_pipeline, X, y, cv=5)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**KNN**
+
+Find and fit the best model
+
+```{python}
+# make pipeline for knn tuning
+knn_pipeline = Pipeline(
+    [
+     ("knn", KNeighborsClassifier())
+    ],
+).set_output(transform="pandas")
+
+neighbors = {'knn__n_neighbors': np.arange(1, 11, 1)}
+
+gscv = GridSearchCV(knn_pipeline, param_grid=neighbors, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in data
+gscv_fitted = gscv.fit(X, y)
+gscv_fitted.cv_results_
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+```
+
+```{python}
+# make pipeline for neighbors = 10
+knn_best_pipeline = Pipeline(
+    [
+     ("knn", KNeighborsClassifier(n_neighbors=10))
+    ],
+).set_output(transform="pandas")
+
+# fit
+knn_best_pipeline_fitted = knn_best_pipeline.fit(X, y)
+```
+
+Cross-validated F1 Score
+
+```{python}
+# cross-validation to estimate f1_macro
+scores = cross_val_score(knn_best_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="f1_macro",
+                         cv=5,
+                         n_jobs=-1)
+
+# add to list
+f1_compare.append(scores.mean())
+
+# report score here
+scores.mean()
+```
+
+Confusion Matrix
+
+```{python}
+# get predictions
+y_pred = cross_val_predict(knn_best_pipeline, X, y, cv=5, n_jobs=-1)
+
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**Model Performance Comparison**
+
+```{python}
+# create dataframe for comparing F1 macro values
+f1_compare_df = pd.DataFrame({
+    "model": ["Decision Tree", "LDA", "QDA", "KNN"],
+    "F1 macro values": f1_compare
+})
+
+f1_compare_df.sort_values(by = "F1 macro values", ascending = False)
+```
+
+**Compare and Interpret**
+
+The models in Part 2, which involved multiclass classification, had lower f1 scores than the models in Part 1, which involved binary classification. This makes sense, since there were more ways for the models to predict incorrectly when there were more classes, so the models were more fallible.
+
+The models were generally the worst at correctly classifying sativa (labeled as 2) compared to indica (labeled as 1) or hybrid (labeled as 3). The confusion matrices show that the hybrid category was most likely to be mixed up. This makes sense, since hybrid refers to a hybrid between indica and sativa, so it may be safe to assume they have properties that are more similar to those categories than indica and sativa have with each other.
+
+# Part 3: Multiclass from Binary -- Distinguishing Indica, Sativa, and Hybrid Strains
+
+**Build One vs Rest (OvR) for Logistic and SVC Models**
+
+Fit a logistic regression for when "Type" = "indica" is 1, and is 0 for all others.
+
+```{python}
+# adjust data
+weed["type_is_indica"] = (weed["Type"] == 1) * 1
+y = weed["type_is_indica"]
+```
+
+```{python}
+# make pipeline for logistic tuning
+logistic_pipeline = Pipeline(
+  [
+   ("logistic", LogisticRegression(penalty = 'l1', max_iter=5000)) 
+  ]
+).set_output(transform="pandas")
+
+# tune lasso penalty hyperparameter
+# splitting up the L1 (lasso) penalty and the 'none' penalty like this reduce the warnings that occur because 'none' and 'C' do not match
+param_grid = [
+    # Case 1: L1 penalty (lasso)
+    {
+        'logistic__penalty': ['l1'],
+        'logistic__C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'logistic__solver': ['liblinear', 'saga']
+    },
+    # Case 2: No penalty
+    {
+        'logistic__penalty': [None],
+        'logistic__solver': ['lbfgs', 'saga']
+    }
+]
+
+gscv = GridSearchCV(logistic_pipeline, param_grid=param_grid, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# Best fitted pipeline & the logistic inside it
+logistic_pipeline_best_indica = gscv.best_estimator_
+logistic_model_best_indica = logistic_pipeline_best_indica.named_steps["logistic"]
+
+# fit
+logistic_model_best_indica_fitted = logistic_pipeline_best_indica.fit(X, y)
+
+# cross-validation to estimate f1
+mean_score = gscv_fitted.best_score_
+
+# create empty list of f1 scores
+f1_compare_OvR = []
+# add to list
+f1_compare_OvR.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit a logistic regression for when "Type" = "sativa" is 1, and is 0 for all others.
+
+```{python}
+# adjust data
+weed["type_is_sativa"] = (weed["Type"] == 2) * 1
+y = weed["type_is_sativa"]
+```
+
+```{python}
+# make pipeline for logistic tuning
+logistic_pipeline = Pipeline(
+  [
+   ("logistic", LogisticRegression(penalty = 'l1', max_iter=5000)) 
+  ]
+).set_output(transform="pandas")
+
+# tune lasso penalty hyperparameter
+# splitting up the L1 (lasso) penalty and the 'none' penalty like this reduce the warnings that occur because 'none' and 'C' do not match
+param_grid = [
+    # Case 1: L1 penalty (lasso)
+    {
+        'logistic__penalty': ['l1'],
+        'logistic__C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'logistic__solver': ['liblinear', 'saga']
+    },
+    # Case 2: No penalty
+    {
+        'logistic__penalty': [None],
+        'logistic__solver': ['lbfgs', 'saga']
+    }
+]
+
+gscv = GridSearchCV(logistic_pipeline, param_grid=param_grid, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# Best fitted pipeline & the logistic inside it
+logistic_pipeline_best_sativa = gscv.best_estimator_
+logistic_model_best_sativa = logistic_pipeline_best_sativa.named_steps["logistic"]
+
+# cross-validation to estimate f1
+mean_score = gscv_fitted.best_score_
+
+# add to list
+f1_compare_OvR.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit a logistic regression for when "Type" = "hybrid" is 1, and is 0 for all others.
+
+```{python}
+# adjust data
+weed["type_is_hybrid"] = (weed["Type"] == 3) * 1
+y = weed["type_is_hybrid"]
+```
+
+```{python}
+# make pipeline for logistic tuning
+logistic_pipeline = Pipeline(
+  [
+   ("logistic", LogisticRegression(penalty = 'l1', max_iter=5000)) 
+  ]
+).set_output(transform="pandas")
+
+# tune lasso penalty hyperparameter
+# splitting up the L1 (lasso) penalty and the 'none' penalty like this reduce the warnings that occur because 'none' and 'C' do not match
+param_grid = [
+    # Case 1: L1 penalty (lasso)
+    {
+        'logistic__penalty': ['l1'],
+        'logistic__C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'logistic__solver': ['liblinear', 'saga']
+    },
+    # Case 2: No penalty
+    {
+        'logistic__penalty': [None],
+        'logistic__solver': ['lbfgs', 'saga']
+    }
+]
+
+gscv = GridSearchCV(logistic_pipeline, param_grid=param_grid, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# Best fitted pipeline & the logistic inside it
+logistic_pipeline_best_hybrid = gscv.best_estimator_
+logistic_model_best_hybrid = logistic_pipeline_best_hybrid.named_steps["logistic"]
+
+# cross-validation to estimate f1
+mean_score = gscv_fitted.best_score_
+
+# add to list
+f1_compare_OvR.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Repeat the OvR approach using SVC instead of logistic regression.
+
+Fit SVC for when "Type" = "indica" is 1, and is 0 for all others.
+
+```{python}
+# set y
+y = weed["type_is_indica"]
+```
+
+```{python}
+# make pipeline for tuning 
+svc_pipeline = Pipeline(
+  [("svc", SVC(kernel="linear", probability=True))]
+)
+
+param_grid = {'svc__C': [0.01, 0.1, 1, 10, 100]}
+
+svc_pipeline_grid = GridSearchCV(svc_pipeline, param_grid, cv=5, scoring='f1_macro', n_jobs=-1)
+svc_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVC inside it
+svc_pipeline_best_indica = svc_pipeline_grid.best_estimator_
+svc_model_best_indica = svc_pipeline_best_indica.named_steps["svc"]
+
+# cross-validation to estimate f1
+mean_score = svc_pipeline_grid.best_score_
+
+# add to list
+f1_compare_OvR.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit SVC for when "Type" = "sativa" is 1, and is 0 for all others.
+
+```{python}
+# set y
+y = weed["type_is_sativa"]
+```
+
+```{python}
+# make pipeline for tuning 
+svc_pipeline = Pipeline(
+  [("svc", SVC(kernel="linear", probability=True))]
+)
+
+param_grid = {'svc__C': [0.01, 0.1, 1, 10, 100]}
+
+svc_pipeline_grid = GridSearchCV(svc_pipeline, param_grid, cv=5, scoring='f1_macro', n_jobs=-1)
+svc_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVC inside it
+svc_pipeline_best_sativa = svc_pipeline_grid.best_estimator_
+svc_model_best_sativa = svc_pipeline_best_sativa.named_steps["svc"]
+
+# cross-validation to estimate f1
+mean_score = svc_pipeline_grid.best_score_
+
+# add to list
+f1_compare_OvR.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit SVC for when "Type" = "hybrid" is 1, and is 0 for all others.
+
+```{python}
+# set y
+y = weed["type_is_hybrid"]
+```
+
+```{python}
+# make pipeline for tuning 
+svc_pipeline = Pipeline(
+  [("svc", SVC(kernel="linear", probability=False))]
+)
+
+param_grid = {'svc__C': [0.01, 0.1, 1, 10, 100]}
+
+svc_pipeline_grid = GridSearchCV(svc_pipeline, param_grid, cv=5, scoring='f1_macro', n_jobs=-1)
+svc_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVC inside it
+svc_pipeline_best_hybrid = svc_pipeline_grid.best_estimator_
+svc_model_best_hybrid = svc_pipeline_best_hybrid.named_steps["svc"]
+
+# fit
+svc_fitted_hybrid = svc_pipeline_best_hybrid.fit(X, y)
+
+# cross-validation to estimate f1
+mean_score = svc_pipeline_grid.best_score_
+
+# add to list
+f1_compare_OvR.append(mean_score)
+
+# report score here
+mean_score
+```
+
+**Compare OvR for Logistic and SVC Models**
+
+```{python}
+# create dataframe for comparing F1 scores
+f1_compare_OvR_df = pd.DataFrame({
+    "model and target class": ["Logistic_indica", "Logistic_sativa", "Logistic_hybrid", "SVC_indica", "SVC_sativa", "SVC_hybrid"],
+    "F1 scores": f1_compare_OvR
+})
+
+f1_compare_OvR_df.sort_values(by = "F1 scores", ascending = False)
+```
+
+The logistic model using indica as the target class did the best job distinguishing the target category from the rest. The SVC model using sativa as the target class did the worst.
+
+It makes intuitive sense that using sativa or indica as the target class would perform the best, since hybrid probably shares some qualities with both and therefore could be harder to distinguish. I found it surprising that the SVC model for the sativa class performed so badly, but there's no way to see if SVC or logistic modeling will be better without trying them both.
+
+**Build One vs One (OvO) for Logistic and SVC Models**
+
+Fit logistic regression for when "Type" = "indica" is 1 and "Type" = "sativa" is 0.
+
+```{python}
+# adjust data
+weed_12 = weed[(weed["Type"] == 1) | (weed["Type"] == 2)]
+weed_12 = weed_12.drop(columns = ["type_is_indica", "type_is_sativa", "type_is_hybrid"])
+# assign y categories to numbers
+label_map = {1: 1, 2: 0}
+weed_12['Type'] = weed_12["Type"].map(label_map)
+
+# set X and y
+X = weed_12.drop(columns = ["Type"])
+y = weed_12["Type"]
+```
+
+```{python}
+# make pipeline for logistic tuning
+logistic_pipeline = Pipeline(
+  [
+   ("logistic", LogisticRegression(penalty = 'l1', max_iter=5000)) 
+  ]
+).set_output(transform="pandas")
+
+# tune lasso penalty hyperparameter
+# splitting up the L1 (lasso) penalty and the 'none' penalty like this reduce the warnings that occur because 'none' and 'C' do not match
+param_grid = [
+    # Case 1: L1 penalty (lasso)
+    {
+        'logistic__penalty': ['l1'],
+        'logistic__C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'logistic__solver': ['liblinear', 'saga']
+    },
+    # Case 2: No penalty
+    {
+        'logistic__penalty': [None],
+        'logistic__solver': ['lbfgs', 'saga']
+    }
+]
+
+gscv = GridSearchCV(logistic_pipeline, param_grid=param_grid, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# Best fitted pipeline & the logistic inside it
+logistic_pipeline_best_12 = gscv.best_estimator_
+logistic_model_best_12 = logistic_pipeline_best_12.named_steps["logistic"]
+
+# cross-validation to estimate f1
+mean_score = gscv_fitted.best_score_
+
+# create empty list of f1 scores
+f1_compare_OvO = []
+# add to list
+f1_compare_OvO.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit logistic regression for when "Type" = "indica" is 1 and "Type" = "hybrid" is 0.
+
+```{python}
+# adjust data
+weed_13 = weed[(weed["Type"] == 1) | (weed["Type"] == 3)]
+weed_13 = weed_13.drop(columns = ["type_is_indica", "type_is_sativa", "type_is_hybrid"])
+# assign y categories to numbers
+label_map = {1: 1, 3: 0}
+weed_13['Type'] = weed_13["Type"].map(label_map)
+
+# set X and y
+X = weed_13.drop(columns = ["Type"])
+y = weed_13["Type"]
+```
+
+```{python}
+# make pipeline for logistic tuning
+logistic_pipeline = Pipeline(
+  [
+   ("logistic", LogisticRegression(penalty = 'l1', max_iter=5000)) 
+  ]
+).set_output(transform="pandas")
+
+# tune lasso penalty hyperparameter
+# splitting up the L1 (lasso) penalty and the 'none' penalty like this reduce the warnings that occur because 'none' and 'C' do not match
+param_grid = [
+    # Case 1: L1 penalty (lasso)
+    {
+        'logistic__penalty': ['l1'],
+        'logistic__C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'logistic__solver': ['liblinear', 'saga']
+    },
+    # Case 2: No penalty
+    {
+        'logistic__penalty': [None],
+        'logistic__solver': ['lbfgs', 'saga']
+    }
+]
+
+gscv = GridSearchCV(logistic_pipeline, param_grid=param_grid, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# Best fitted pipeline & the logistic inside it
+logistic_pipeline_best_13 = gscv.best_estimator_
+logistic_model_best_13 = logistic_pipeline_best_13.named_steps["logistic"]
+
+# fit
+logistic_model_best_13_fitted = logistic_pipeline_best_13.fit(X, y)
+
+# cross-validation to estimate f1
+mean_score = gscv_fitted.best_score_
+
+# add to list
+f1_compare_OvO.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit logistic regression for when "Type" = "hybrid" is 1 and "Type" = "sativa" is 0.
+
+```{python}
+# adjust data
+weed_23 = weed[(weed["Type"] == 2) | (weed["Type"] == 3)]
+weed_23 = weed_23.drop(columns = ["type_is_indica", "type_is_sativa", "type_is_hybrid"])
+# assign y categories to numbers
+label_map = {3: 1, 2: 0}
+weed_23['Type'] = weed_23["Type"].map(label_map)
+
+# set X and y
+X = weed_23.drop(columns = ["Type"])
+y = weed_23["Type"]
+```
+
+```{python}
+# make pipeline for logistic tuning
+logistic_pipeline = Pipeline(
+  [
+   ("logistic", LogisticRegression(penalty = 'l1', max_iter=5000))
+  ]
+).set_output(transform="pandas")
+
+# tune lasso penalty hyperparameter
+# splitting up the L1 (lasso) penalty and the 'none' penalty like this reduce the warnings that occur because 'none' and 'C' do not match
+param_grid = [
+    # Case 1: L1 penalty (lasso)
+    {
+        'logistic__penalty': ['l1'],
+        'logistic__C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'logistic__solver': ['liblinear', 'saga']
+    },
+    # Case 2: No penalty
+    {
+        'logistic__penalty': [None],
+        'logistic__solver': ['lbfgs', 'saga']
+    }
+]
+
+gscv = GridSearchCV(logistic_pipeline, param_grid=param_grid, cv = 5, scoring='f1_macro', n_jobs=-1)
+
+# feed in the data
+gscv_fitted = gscv.fit(X, y)
+
+# Best fitted pipeline & the logistic inside it
+logistic_pipeline_best_23 = gscv.best_estimator_
+logistic_model_best_23 = logistic_pipeline_best_23.named_steps["logistic"]
+
+# cross-validation to estimate f1
+mean_score = gscv_fitted.best_score_
+
+# add to list
+f1_compare_OvO.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Repeat the OvO approach using SVC instead of logistic regression.
+
+Fit SVC for when "Type" = "indica" is 1 and "Type" = "sativa" is 0.
+
+```{python}
+# set X and y
+X = weed_12.drop(columns = ["Type"])
+y = weed_12["Type"]
+```
+
+```{python}
+# make pipeline for tuning 
+svc_pipeline = Pipeline(
+  [("svc", SVC(kernel="linear", probability=False))]
+)
+
+param_grid = {'svc__C': [0.01, 0.1, 1, 10, 100]}
+
+svc_pipeline_grid = GridSearchCV(svc_pipeline, param_grid, cv=5, scoring = "f1_macro", n_jobs=-1)
+svc_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVC inside it
+svc_pipeline_best_12 = svc_pipeline_grid.best_estimator_
+svc_model_best_12 = svc_pipeline_best_12.named_steps["svc"]
+
+# cross-validation to estimate f1
+mean_score = svc_pipeline_grid.best_score_
+
+# add to list
+f1_compare_OvO.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit SVC for when "Type" = "indica" is 1 and "Type" = "hybrid" is 0.
+
+```{python}
+# set X and y
+X = weed_13.drop(columns = ["Type"])
+y = weed_13["Type"]
+```
+
+```{python}
+# make pipeline for tuning 
+svc_pipeline = Pipeline(
+  [("svc", SVC(kernel="linear", probability=False))]
+)
+
+param_grid = {'svc__C': [0.01, 0.1, 1, 10, 100]}
+
+svc_pipeline_grid = GridSearchCV(svc_pipeline, param_grid, cv=5, scoring='f1_macro', n_jobs=-1)
+svc_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVC inside it
+svc_pipeline_best_13 = svc_pipeline_grid.best_estimator_
+svc_model_best_13 = svc_pipeline_best_13.named_steps["svc"]
+
+# cross-validation to estimate f1
+mean_score = svc_pipeline_grid.best_score_
+
+# add to list
+f1_compare_OvO.append(mean_score)
+
+# report score here
+mean_score
+```
+
+Fit SVC for when "Type" = "hybrid" is 1 and "Type" = "sativa" is 0.
+
+```{python}
+# set X and y
+X = weed_23.drop(columns = ["Type"])
+y = weed_23["Type"]
+```
+
+```{python}
+# make pipeline for tuning 
+svc_pipeline = Pipeline(
+  [("svc", SVC(kernel="linear", probability=False))]
+)
+
+param_grid = {'svc__C': [0.01, 0.1, 1, 10, 100]}
+
+svc_pipeline_grid = GridSearchCV(svc_pipeline, param_grid, cv=5, scoring='f1_macro', n_jobs=-1)
+svc_pipeline_grid.fit(X, y)
+
+# Best fitted pipeline & the SVC inside it
+svc_pipeline_best_23 = svc_pipeline_grid.best_estimator_
+svc_model_best_23 = svc_pipeline_best_23.named_steps["svc"]
+
+# cross-validation to estimate f1
+mean_score = svc_pipeline_grid.best_score_
+
+# add to list
+f1_compare_OvO.append(mean_score)
+
+# report score here
+mean_score
+```
+
+**Compare OvO for Logistic and SVC Models**
+
+```{python}
+# create dataframe for comparing f1 values
+f1_compare_OvO_df = pd.DataFrame({
+    "model and target class": ["Logistic_indica_sativa", "Logistic_indica_hybrid", "Logistic_hybrid_sativa", "SVC_indica_sativa", "SVC_indica_hybrid", "SVC_hybrid_sativa"],
+    "F1 scores": f1_compare_OvO
+})
+
+f1_compare_OvO_df.sort_values(by = "F1 scores", ascending = False)
+```
+
+The SVC model comparing the indica and sativa classes did the best job distinguishing the target category from the rest. The SVC model comparing the sativa and hybrid classes did the worst.
+
+Again, it makes intuitive sense that sativa and indica would be the easiest to differentiate, since hybrid probably shares some qualities with both. It makes sense that the logistic regression using the same class comparison performed second best.
+
+**Notes on SciKit Learn's Documentation**
+
+The LogisticRegression() function uses OvR by default, according to the scikit-learn website's glossary. (<https://scikit-learn.org/stable/glossary.html#term-multiclass>)
+
+The SVC() function uses OvO by default, according to the scikit-learn website. (<https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html>)

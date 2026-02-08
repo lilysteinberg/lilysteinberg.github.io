@@ -1,0 +1,729 @@
+---
+title: "Predicting Likelihood of Exercise-Induced Heart Attacks Using Medical Data"
+author: Lily
+format:
+    html:
+        embed-resources: true
+        code-line-numbers: true
+---
+
+**GitHub Repository**: <https://github.com/lilysteinberg/lilysteinberg.github.io>
+
+# Part 0: Explaining and Preparing Data
+
+This project uses medical data to predict the likelihood of a person's experiencing an exercise-induced heart attack. These predictions can help hospitals triage patients, evaluate new doctors, and enhance research into leading causes and factors of exercise-induced heart attacks.
+
+The dataset consists of clinical data from patients who entered the hospital complaining of chest pain ("angina") during exercise. The information collected includes:
+
+`age` : Age of the patient
+
+`sex`: Sex of the patient
+
+`cp`: Chest Pain type
+
+-   Value 0: asymptomatic
+
+-   Value 1: typical angina
+
+-   Value 2: atypical angina
+
+-   Value 3: non-anginal pain
+
+`trtbps`: resting blood pressure (in mm Hg)
+
+`chol` : cholesterol in mg/dl fetched via BMI sensor
+
+`restecg` : resting electrocardiographic results
+
+-   Value 0: normal
+
+-   Value 1: having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of \> 0.05 mV)
+
+-   Value 2: showing probable or definite left ventricular hypertrophy by Estes’ criteria
+
+`thalach` : maximum heart rate achieved during exercise
+
+`output` : the doctor’s diagnosis of whether the patient is at risk for a heart attack
+
+-   0 = not at risk of heart attack
+
+-   1 = at risk of heart attack
+
+------------------------------------------------------------------------
+
+This hidden code loads in the necessary packages.
+
+```{python}
+#| code-fold: true
+
+# packages
+import numpy as np
+import pandas as pd
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay, RocCurveDisplay, cohen_kappa_score
+from sklearn.model_selection import GridSearchCV, cross_val_score, cross_val_predict
+from sklearn.inspection import permutation_importance
+import matplotlib.pyplot as plt
+```
+
+This hidden code imports the data.
+
+```{python}
+#| code-fold: true
+
+# data
+ha = pd.read_csv("https://www.dropbox.com/s/aohbr6yb9ifmc8w/heart_attack.csv?dl=1")
+```
+
+This hidden code previews and investigates the data to check if it needs cleaning. Output is commented out to reduce length of project.
+
+```{python}
+#| code-fold: true
+
+# preview columns and data
+#print(ha.head())
+
+# statstical summary
+#ha.describe() 
+## not worried about any outliers
+
+# Missing data
+#ha.isna().any() 
+## no data missing
+
+# Data Types
+#ha.dtypes 
+## all numeric columns are apporpriatly numeric already
+```
+
+# Part One: Fitting Different Classification Model Types
+
+```{python}
+# specify x variables and y variable
+X = ha.drop(columns = ["output"])
+y = ha["output"]
+```
+
+```{python}
+### set up column transformers
+cat_cols = ['sex', 'cp', 'restecg']
+num_cols = ['remainder__age', 'remainder__trtbps', 'remainder__chol', 'remainder__thalach']
+
+ct_dummies = ColumnTransformer([('dummify', OneHotEncoder(sparse_output=False, handle_unknown='ignore'), cat_cols)],
+                               remainder = 'passthrough').set_output(transform="pandas")
+
+ct_standardize = ColumnTransformer([('standardize', StandardScaler(), num_cols)],
+                               remainder = 'passthrough').set_output(transform="pandas")
+```
+
+**1: KNN**
+
+```{python}
+# make pipeline for knn tuning
+knn_pipeline = Pipeline(
+    [
+     ("preprocessing1", ct_dummies),
+     ("preprocessing2", ct_standardize),
+     ("knn", KNeighborsClassifier())
+    ],
+).set_output(transform="pandas")
+
+neighbors = {'knn__n_neighbors': np.arange(1, 11, 1)}
+
+gscv = GridSearchCV(knn_pipeline, param_grid=neighbors, cv = 5, scoring='roc_auc')
+
+# feed in data
+gscv_fitted = gscv.fit(X, y)
+gscv_fitted.cv_results_
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_
+```
+
+neighbors = 10 performs the best.
+
+```{python}
+# make pipeline for neighbors = 10
+knn_best_pipeline = Pipeline(
+  [
+   ("preprocessing1", ct_dummies),
+   ("preprocessing2", ct_standardize),
+   ("knn", KNeighborsClassifier(n_neighbors = 10))
+  ]
+).set_output(transform="pandas")
+
+# fit
+knn_best_pipeline_fitted = knn_best_pipeline.fit(X, y)
+
+# cross-validation to estimate ROC AUC
+scores = cross_val_score(knn_best_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="roc_auc",
+                         cv=5)
+scores.mean()
+```
+
+The cross-validated ROC AUC = 0.8067377541998232.
+
+```{python}
+# classification report for accuracy, precision, recall, f1
+y_pred_knn = cross_val_predict(knn_best_pipeline, X, y, cv=5)
+print(classification_report(y, y_pred_knn))
+```
+
+```{python}
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred_knn,
+                                      cmap = plt.cm.Blues)
+```
+
+```{python}
+### feature importance
+X_transformed = knn_best_pipeline[:-1].transform(X)
+
+feature_importance = pd.DataFrame()
+feature_importance['variable_name'] = knn_best_pipeline[:-1].get_feature_names_out()
+feature_importance['feature_importance'] = permutation_importance(knn_best_pipeline.named_steps["knn"], X_transformed, y, n_repeats=10, random_state=42).importances_mean
+
+# display
+feature_importance.sort_values(by = "feature_importance", ascending = False)
+```
+
+**2: Logistic Regression**
+
+```{python}
+# making adjustments to X variables to optimize model
+X_logistic = ha.drop(columns = ["output"])
+X_logistic['age'] = np.log(X_logistic['age'])
+X_logistic["age:sex"] = X_logistic["age"] * X_logistic["sex"]
+
+# rejected transformations I tested
+#X_logistic['chol'] = np.log(X_logistic['chol'])
+#X_logistic["trtbps:chol"] = X_logistic["trtbps"] * X_logistic["chol"]
+#X_logistic["thalach:cp"] = X_logistic["thalach"] * X_logistic["cp"]
+#X_logistic["sex:cp"] = X_logistic["sex"] * X_logistic["cp"]
+#X_logistic["age:thalach"] = X_logistic["age"] * X_logistic["thalach"]
+
+# create new column transformer to drop first dummy variable to avoid the dummy variable trap
+ct_dummies_logistic = ColumnTransformer([('dummify', OneHotEncoder(sparse_output=False, handle_unknown='ignore', drop='first'), cat_cols)],
+                               remainder = 'passthrough').set_output(transform="pandas")
+```
+
+```{python}
+# make pipeline for logistic tuning
+logistic_pipeline = Pipeline(
+  [
+   ("preprocessing1", ct_dummies_logistic),
+   ("preprocessing2", ct_standardize),
+   ("logistic", LogisticRegression(max_iter=5000, tol=1e-4, random_state=0))
+  ]
+).set_output(transform="pandas")
+
+# tune lasso penalty hyperparameter
+param_grid = [
+    # Case 1: lasso penalties
+    {
+        'logistic__penalty': ['l1'],
+        'logistic__C': [0.001, 0.01, 0.1, 1, 10, 100],
+        'logistic__solver': ['liblinear', 'saga']
+    },
+    # Case 2: No penalty
+    {
+        'logistic__penalty': [None],
+        'logistic__solver': ['lbfgs', 'saga']
+    }
+]
+
+gscv = GridSearchCV(logistic_pipeline, param_grid=param_grid, cv = 5, scoring='roc_auc', n_jobs=-1, error_score="raise")
+
+# feed in the data
+gscv_fitted = gscv.fit(X_logistic, y)
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+```
+
+penalty = l1 (lasso), C = 1, and solver = "saga" performs the best.
+
+```{python}
+# make pipeline for C = 1, penalty = l1 (lasso), and solver = "saga"
+logistic_best_pipeline = Pipeline(
+  [
+   ("preprocessing1", ct_dummies_logistic),
+   ("preprocessing2", ct_standardize),
+   ("logistic", LogisticRegression(penalty = 'l1', C = 1.0, solver = 'saga'))
+  ]
+).set_output(transform="pandas")
+
+# fit
+logistic_best_pipeline_fitted = logistic_best_pipeline.fit(X_logistic, y)
+
+# cross-validation to estimate ROC AUC
+scores = cross_val_score(logistic_best_pipeline,
+                         X=X_logistic,
+                         y=y,
+                         scoring="roc_auc",
+                         cv=5)
+scores.mean()
+```
+
+The cross-validated ROC AUC = 0.8676222811671088.
+
+This was the highest ROC AUC managed. I transformed the age variable into log(age) and created an interaction term between age and sex. I tested other transformations. See the commented out code above for details.
+
+```{python}
+# classification report for accuracy, precision, recall, f1
+y_pred_lg = cross_val_predict(logistic_best_pipeline, X_logistic, y, cv=5)
+print(classification_report(y, y_pred_lg))
+```
+
+```{python}
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred_lg,
+                                      cmap = plt.cm.Blues)
+```
+
+```{python}
+# create dataframe for storing coefficients
+coef_compare = pd.DataFrame()
+coef_compare['variable_name'] = pd.DataFrame(logistic_best_pipeline.named_steps["preprocessing1"].get_feature_names_out())
+coef_compare['logistic coefficients'] = logistic_best_pipeline_fitted.named_steps['logistic'].coef_.flatten()
+coef_compare["abs_coefs"] = coef_compare["logistic coefficients"].abs()
+
+# display
+coef_compare.sort_values(by = "abs_coefs", ascending = False)
+```
+
+This hidden code contains the math used to interpret the coefficients.
+
+```{python}
+#| code-fold: true
+
+# math for coefficient interpretations:
+# percent change in odds = (exp (bj ) – 1) x 100
+
+### restecg
+#(np.exp(0)-1)*100 #returns 0
+#(np.exp(1.872484)-1)*100 #returns 550.4433361351994
+
+### age
+## log(age)'s coefficient // log(age)'s effect when sex = 0
+#2**1.760940 # returns 3.3891887844543898
+## age:sex's coefficient
+#2**-0.472809 # returns 0.7070734531951167
+## log(age)'s effect when sex = 1
+#3.3891887844543898 + 0.7070734531951167 # returns 4.096262237649507
+
+### trtbps
+#(np.exp(1.427516)-1)*100 #returns 316.8332184284586
+
+## cp
+#(np.exp(-0.300585)-1)*100 #returns -25.961503123883833
+#(np.exp(-0.272560)-1)*100 #returns -23.857225785992053
+#(np.exp(0.776952)-1)*100 #returns 117.48332610156571
+
+### sex (with interaction)
+#(np.exp(-0.163408)-1)*100 + (np.exp(-0.500068)*100) #returns 45.573404294331496
+
+### chol
+#(np.exp(0.270352)-1)*100 # returns 31.042563938434608
+
+### thalach
+#(np.exp(0)-1)*100 # returns 0
+```
+
+Coefficient interpretation:
+
+*Note: lasso tuning turned the coefficients for restecg_1 and thalach to 0.*
+
+-   When resting electrocardiographic results (restecg) are value 1, there is a (e\^0.0 - 1 \* 100) = 0% change of the odds of a patient's being diagnosed as at risk for a heart attack compared to the baseline of value 0. At value 2, there is a 550.44% increase of the odds of a patient's being diagnosed as at risk for a heart attack compared to the baseline of value 0.
+
+-   *Note: age has been log transformed and is part of an interaction.* When age doubles, the odds of a patient's being diagnosed as at risk for a heart attack increases by a factor of 3.39 when sex = 0 and 4.10 when sex = 1.
+
+-   When resting blood pressure (trtbps) increases by one unit (measured in mmHg), there is a 316.83% increase of the odds of a patient's being diagnosed as at risk for a heart attack.
+
+-   When chest pain (cp) is value 1, there is a 25.96% decrease of the odds of a patient's being diagnosed as at risk for a heart attack compared to the baseline of value 0. At value 2, there is a -23.86% decrease. At value 3, there is a 117.48% increase.
+
+-   *Note: sex is part of an interaction.* When sex = 1, there is a 45.57% increase of the odds of a patient's being diagnosed as at risk for a heart attack compared to when sex = 0 and holding age constant.
+
+-   When cholesterol (chol) increases by one unit (measured in mg/dl), there is a 31.04% increase of the odds of a patient's being diagnosed as at risk for a heart attack.
+
+-   When maximum heart rate achieved during exercise (thalach) increases by one unit, there is a 0% decrease of the odds of a patient's being diagnosed as at risk for a heart attack.
+
+**3: Decision Tree**
+
+```{python}
+# make pipeline for decision tree tuning
+dt_pipeline = Pipeline(
+    [
+     ("preprocessing1", ct_dummies),
+     ("dt", DecisionTreeClassifier())
+    ],
+).set_output(transform="pandas")
+
+tuning = {
+    'dt__ccp_alpha': np.arange(0, 1, 0.1),
+    'dt__max_depth': np.arange(1,10, 1),
+    #'dt__min_samples_split': np.arange(1, 273, 1)
+}
+
+gscv = GridSearchCV(dt_pipeline, param_grid=tuning, cv = 5, scoring='roc_auc')
+
+# feed in data
+gscv_fitted = gscv.fit(X, y)
+gscv_fitted.cv_results_
+
+# view results
+df_cv_results_ = pd.DataFrame(gscv_fitted.cv_results_)
+df_cv_results_.sort_values(by = "rank_test_score", ascending = True)
+```
+
+ccp_alpha = 0.0 with max_depth = 3 performs the best.
+
+```{python}
+# make pipeline for ccp_alpha = 0.0 and max_depth = 3
+dt_best_pipeline = Pipeline(
+    [
+     ("preprocessing1", ct_dummies),
+     ("dt", DecisionTreeClassifier(ccp_alpha=0.0, max_depth=3))
+    ],
+).set_output(transform="pandas")
+
+# fit
+dt_best_pipeline_fitted = dt_best_pipeline.fit(X, y)
+
+# cross-validation to estimate ROC AUC
+scores = cross_val_score(dt_best_pipeline,
+                         X=X,
+                         y=y,
+                         scoring="roc_auc",
+                         cv=5)
+scores.mean()
+```
+
+The cross-validated ROC AUC = 0.7710196286472148.
+
+```{python}
+# classification report for accuracy, precision, recall, f1
+y_pred_dt = cross_val_predict(dt_best_pipeline, X, y, cv=5)
+print(classification_report(y, y_pred_dt))
+```
+
+```{python}
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y,
+                                      y_pred_dt,
+                                      cmap = plt.cm.Blues)
+```
+
+```{python}
+### feature importance
+feature_importance = pd.DataFrame()
+feature_importance['variable_name'] = dt_best_pipeline.named_steps["preprocessing1"].get_feature_names_out()
+feature_importance['feature_importance'] = dt_best_pipeline.named_steps["dt"].feature_importances_
+
+# display
+feature_importance.sort_values(by = "feature_importance", ascending = False)
+```
+
+**4. Interpretation**
+
+Which predictors were most important to predicting heart attack risk?
+
+-   In the KNN model, the most important predictors were maximum heart rate during exercise (thalch), sex, and an absence of chest pain (cp, value 0). For the full, ranked list, see Part 1, Q1.
+
+-   In the logistic regression model, the most important predictors were resting electrocardiographic results when showing probable or definite left ventricular hypertrophy (restecg, value 2), age, and resting blood pressure (trtbps). For the full, ranked list, see Part 1, Q2.
+
+-   In the decision tree model, the most important predictors were an absence of chest pain (cp, value 0), age, and maximum heart rate during exercise (thalch). For the full, ranked list, see Part 1, Q3.
+
+**5. ROC Curve**
+
+```{python}
+# get predicted probabilities
+y_knn_proba = cross_val_predict(knn_best_pipeline, X, y, cv=5, method='predict_proba')[:, 1]
+y_log_proba = cross_val_predict(logistic_best_pipeline, X_logistic, y, cv=5, method='predict_proba')[:, 1]
+y_dt_proba = cross_val_predict(dt_best_pipeline, X, y, cv=5, method='predict_proba')[:, 1]
+
+# plot ROC curves from predictions
+fig, ax = plt.subplots(figsize = (8, 8))
+ax.plot(ax.get_xlim(), ax.get_ylim(), ls = '--', c = 'k')
+
+RocCurveDisplay.from_predictions(y, y_knn_proba, ax=ax, name="knn")
+RocCurveDisplay.from_predictions(y, y_log_proba, ax=ax, name="logistic")
+RocCurveDisplay.from_predictions(y, y_dt_proba, ax=ax, name="dt")
+```
+
+# Part Two: Summarizing Metrics for All Model Types
+
+These values were included in the classification reports produced in Part 1. Sensitivity is recall for the target class, precision is for the target class, and specificity is recall for the non-target class. The results are summarized below:
+
+**KNN**
+
+-   Sensitivity: 0.67
+
+-   Precision: 0.80
+
+-   Specificity: 0.81
+
+**Logistic Regression**
+
+-   Sensitivity: 0.82
+
+-   Precision: 0.78
+
+-   Specificity: 0.74
+
+**Decision Tree**
+
+-   Sensitivity: 0.74
+
+-   Precision: 0.79
+
+-   Specificity: 0.78
+
+# Part Three: Discussion of Metric Choice for Model Evaluation Given Different Business Goals
+
+**1. The hospital faces severe lawsuits if they deem a patient to be low risk, and that patient later experiences a heart attack.**
+
+Which metric(s) you would use for model selection and why?
+
+-   I'd use sensitivity = true positive / (true positive + false negative), since it accounts for the proportion of positive cases out of all truly positive cases and takes into account false negatives. This situation describes the repercussions of false negatives, so I would want a metric that accounts for it.
+
+Which of your final models (Part One Q1-3) you would recommend to the hospital, and why?
+
+-   I'd recommend the logistic regression model because it has the highest sensitivity, which suggests the lowest false negative rate.
+
+What score you should expect for your chosen metric(s) using your chosen model to predict future observations?
+
+-   I'd expect the sensitivity score to be about 0.82.
+
+**2. The hospital is overfull, and wants to only use bed space for patients most in need of monitoring due to heart attack risk.**
+
+Which metric(s) you would use for model selection and why?
+
+-   I'd use precision = true positive / (true positive + false positive), since it accounts for the amount of positive predictions made by the model that are truly positive. This situation describes the importance of identifying true positives, so I would want a metric that accounts for it.
+
+Which of your final models (Part One Q1-3) you would recommend to the hospital, and why?
+
+-   I'd recommend the KNN model because it has the highest precision, which suggests the highest true positive rate.
+
+What score you should expect for your chosen metric(s) using your chosen model to predict future observations?
+
+-   I'd expect the precision score to be about 0.80.
+
+**3. The hospital is studying root causes of heart attacks, and would like to understand which biological measures are associated with heart attack risk.**
+
+Which metric(s) you would use for model selection and why?
+
+-   I'd use sensitivity = true positive / (true positive + false negative), since it focuses on the true positives and is valuable when the proportion of target cases is small (fewer people have heart attacks than those who do not). This situation describes a situation where it is important to make sure true positives are correctly identified, so the associated biological measures can be weighed.
+
+Which of your final models (Part One Q1-3) you would recommend to the hospital, and why?
+
+-   I'd recommend the logistic regression model because it has the highest sensitivity. Additionally, with the lasso penalty, the regression shows which variables are most impactful to consider and sets the rest to 0, which can help show which biological measures are associated with heart attack risk.
+
+What score you should expect for your chosen metric(s) using your chosen model to predict future observations?
+
+-   I'd expect the sensitivity score to be about 0.82.
+
+**4. The hospital is training a new batch of doctors, and they would like to compare the diagnoses of these doctors to the predictions given by the algorithm to measure the ability of new doctors to diagnose patients.**
+
+Which metric(s) you would use for model selection and why?
+
+-   I'd use accuracy = (true positive + true negative) / (true positive + true negative + false positive + false negative), since it accounts for the proportion of accurate diagnoses (true positive and true negative) out of all possible situations. The posed situation can have new doctors diagnosing correctly and incorrectly, for both heart attack and non-heart attack cases, so accuracy would account for all potential instances.
+
+Which of your final models (Part One Q1-3) you would recommend to the hospital, and why?
+
+-   I'd recommend the logistic regression model because it has the highest accuracy (0.78) compared to the KNN (0.74) and decision tree (0.76) models.
+
+What score you should expect for your chosen metric(s) using your chosen model to predict future observations?
+
+-   I'd expect the accuracy score to be about 0.78.
+
+# Part Four: Evaluating Model Performance with Validation Dataset
+
+```{python}
+# import new data
+ha_validation = pd.read_csv("https://www.dropbox.com/s/jkwqdiyx6o6oad0/heart_attack_validation.csv?dl=1")
+
+# assign X and y variables
+X_test = ha_validation.drop(columns = ["output"])
+y_test = ha_validation["output"]
+
+# logistic regression's transformations
+X_logistic_test = ha_validation.drop(columns = ["output"])
+X_logistic_test['age'] = np.log(X_logistic_test['age'])
+X_logistic_test["age:sex"] = X_logistic_test["age"] * X_logistic_test["sex"]
+```
+
+**KNN**
+
+```{python}
+# cross-validation to estimate ROC AUC
+scores = cross_val_score(knn_best_pipeline,
+                         X=X_test,
+                         y=y_test,
+                         scoring="roc_auc",
+                         cv=5)
+scores.mean()
+```
+
+The cross-validated ROC AUC = 0.7513888888888889.
+
+```{python}
+# classification report for accuracy, precision, recall, f1
+y_pred = cross_val_predict(knn_best_pipeline, X_test, y_test, cv=5)
+print(classification_report(y_test, y_pred))
+```
+
+```{python}
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y_test,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**Logistic Regression**
+
+```{python}
+# cross-validation to estimate ROC AUC
+scores = cross_val_score(logistic_best_pipeline,
+                         X=X_logistic_test,
+                         y=y_test,
+                         scoring="roc_auc",
+                         cv=5,
+                         n_jobs=-1)
+scores.mean()
+```
+
+The cross-validated ROC AUC = 0.65.
+
+```{python}
+# classification report for accuracy, precision, recall, f1
+y_pred = cross_val_predict(logistic_best_pipeline, X_logistic_test, y_test, cv=5, n_jobs=-1)
+print(classification_report(y_test, y_pred))
+```
+
+```{python}
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y_test,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**Decision Tree**
+
+```{python}
+# cross-validation to estimate ROC AUC
+scores = cross_val_score(dt_best_pipeline,
+                         X=X_test,
+                         y=y_test,
+                         scoring="roc_auc",
+                         cv=5)
+scores.mean()
+```
+
+The cross-validated ROC AUC = 0.5666666666666667.
+
+```{python}
+# classification report for accuracy, precision, recall, f1
+y_pred = cross_val_predict(dt_best_pipeline, X_test, y_test, cv=5)
+print(classification_report(y_test, y_pred))
+```
+
+```{python}
+# visualize confusion matrix
+ConfusionMatrixDisplay.from_predictions(
+                                      y_test,
+                                      y_pred,
+                                      cmap = plt.cm.Blues)
+```
+
+**KNN**
+
+-   train_ROC AUC: 0.8067377541998232
+
+-   test_ROC AUC: 0.7513888888888889
+
+-   train_precision: 0.80
+
+-   test_precision: 0.73
+
+-   train_recall: 0.67
+
+-   test_recall: 1.00
+
+**Logistic Regression**
+
+-   train_ROC AUC: 0.8676222811671088
+
+-   test_ROC AUC: 0.65
+
+-   train_precision: 0.78
+
+-   test_precision: 0.71
+
+-   train_recall: 0.82
+
+-   test_recall: 0.89
+
+**Decision Tree**
+
+-   train_ROC AUC: 0.7776509283819629
+
+-   test_ROC AUC: 0.5666666666666667
+
+-   train_precision: 0.79
+
+-   test_precision: 0.67
+
+-   train_recall: 0.74
+
+-   test_recall: 0.74
+
+In every case, the ROC AUC and precision values decreased from the train data to the test data, however the sensitivity / recall values stayed the same or increased. That suggests that the models all tend to have more false positives than false negatives when used with new data.
+
+The KNN model has the highest ROC AUC with the test data, so it might be the most robust choice for predicting on unseen data. I'd say the measures of success did not turn out to be particularly close to the validation data.
+
+# Part Five: Discussing Cohen's Kappa as a Metric
+
+The below chart shows the Cohen's Kappa values for each model in Part 1. This value represents the level of agreement between the model's predictions and the actual outcomes, with 1 being perfect agreement and \<0 being less than chance agreement.
+
+```{python}
+# create empty list for kappas
+kappas = []
+
+# calculate and save kappa values
+kappas.append(cohen_kappa_score(y, y_pred_knn))
+kappas.append(cohen_kappa_score(y, y_pred_lg))
+kappas.append(cohen_kappa_score(y, y_pred_dt))
+
+# create dataframe for comparing kappa values
+kappa_compare = pd.DataFrame({
+    "model": ["KNN", "Logistic", "Decision Tree"],
+    "kappa_value": kappas
+})
+
+# display
+kappa_compare.sort_values(by = "kappa_value", ascending = False)
+```
+
+This metric helps us quantify more than just accuracy within the classification, since it factors in the possibility of agreement occurring by chance. In other words, it helps show how similar the model classifies results (predicts) vs. what actually happened (y).
+
+This metric as a measure of model success could be preferable when the one type of case in the classification happens much less frequently than the other. For example, if only 5% of the hospital's patients are diagnosed as at risk of a heart attack, one could just say no one is at risk of a heart attack and be correct with 95% accuracy. But that would be more influenced by random chance than actual diagnostic skill. Similarly, using Cohen's Kappa for model selection is measuring the accuracy of the predicted diagnosis while penalizing models that might be performing accurately by mere chance because the target class is rare.
+
+If I use Cohen's Kappa to judge the models, I would conclude that the logistic regression performs the best. This model also had the highest ROC AUC (on the training data, KNN was higher on the test data). This makes sense, because the ROC curve shows sensitivity and specificity measures across all confusion matrix cutoff values to show how accurately a model classifies both target and non-target class cases. While the ROC curve does not account for accuracy from random chance, since it considers sensitivity and specificity, it is robust enough to handle situations when the target class is rare.
