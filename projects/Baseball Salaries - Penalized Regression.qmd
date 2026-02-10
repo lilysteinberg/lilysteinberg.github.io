@@ -1137,8 +1137,8 @@ Lasso and Ridge may perform better, as it does in my findings, because Elastic N
 # I am remaking the pipeline to include the preprocessing column transformation that handles all variables
 lasso_final_pipeline = Pipeline(
   [("preprocessing", all_ct),
-  ("standardize", StandardScaler()),
-  ("lasso_regression", Lasso(alpha=0.1))]
+  ("standardize", StandardScaler(with_mean=False)),
+  ("lasso_regression", Lasso(max_iter=50000, tol=1e-3, alpha=0.1))]
 )
 
 # save fitted lasso regression
@@ -1149,7 +1149,8 @@ scores = cross_val_score(lasso_final_pipeline,
                          X=X,
                          y=y,
                          scoring="neg_mean_squared_error",
-                         cv=5)
+                         cv=5,
+                         n_jobs=-1)
 
 # MSE value
 lasso_final_score = -scores.mean()
@@ -1157,7 +1158,7 @@ lasso_final_score
 
 ```
 
-The MSE is 100,653.91631317357.
+The MSE is 100,675.85071383776.
 
 Using the pipeline with all the features yielded a higher MSE than when running it with just the top five numeric and top one categorical variables (with interactions). This can happen because the model was tuned with a simpler dataset. The impact this difference can have is demonstrated by the fact that when I ran the Lasso Regression in Part 1 with all variables, the optimal alpha was 10, whereas here it is 0.1 (based on the model from Part 2).
 
